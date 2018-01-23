@@ -1,0 +1,3 @@
+name: agda-matrices
+depend: agda-stdlib
+include: ./src/
