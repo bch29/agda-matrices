@@ -31,12 +31,18 @@ open import Data.Unit public
 open import Data.Empty public
   using (⊥; ⊥-elim)
 
+module List where
+  open import Data.List public
+  open import Data.List.Properties public
+open List using (List) hiding (module List) public
+
 --------------------------------------------------------------------------------
 --  Combinators
 --------------------------------------------------------------------------------
 
-open import Function public
-  using (id; _∘_)
+module Function where
+  open import Function public
+open Function using (id; _∘_) public
 
 --------------------------------------------------------------------------------
 --  Relations
