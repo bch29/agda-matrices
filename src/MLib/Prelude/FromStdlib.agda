@@ -13,23 +13,28 @@ open import Level public
 --  Data
 --------------------------------------------------------------------------------
 
+open import Data.Product public
+  using (Σ; _×_; _,_; proj₁; proj₂; ∃; ∃₂; curry; uncurry)
+open import Data.Sum public
+  using (_⊎_; inj₁; inj₂)
+
+open import Data.Unit public
+  using (⊤; tt)
+open import Data.Empty public
+  using (⊥; ⊥-elim)
+
+module Bool where
+  open import Data.Bool public
+open Bool using (Bool; true; false) hiding (module Bool) public
+
 module Nat where
   open import Data.Nat public
   open import Data.Nat.Properties public
 open Nat using (ℕ) public
 
-open import Data.Product public
-  using (Σ; _×_; _,_; proj₁; proj₂; ∃; ∃₂; curry; uncurry)
-open import Data.Sum public
-  using (_⊎_; inj₁; inj₂)
-open import Data.Maybe public
-  using (Maybe; just; nothing; maybe)
-open import Data.Bool public
-  using (Bool; true; false; if_then_else_; _∧_; _∨_)
-open import Data.Unit public
-  using (⊤; tt)
-open import Data.Empty public
-  using (⊥; ⊥-elim)
+module Maybe where
+  open import Data.Maybe public
+open Maybe using (Maybe; just; nothing; maybe) hiding (module Maybe) public
 
 module List where
   open import Data.List public

@@ -14,6 +14,10 @@ open import Data.Vec using (Vec; _∷_; [])
 open import Data.Vec.N-ary
 open import Data.Vec.Relation.InductivePointwise using (Pointwise; []; _∷_)
 
+open import Data.Bool using (T)
+
+open import Category.Applicative
+
 
 module _ {c ℓ} {A : Set c} (_≈_ : Rel A ℓ) where
   open Algebra.FunctionProperties _≈_
@@ -96,7 +100,7 @@ record RawStruct c ℓ {k} (K : ℕ → Set k) : Set (sucˡ (c ⊔ˡ ℓ ⊔ˡ k
 --  Universe of properties
 --------------------------------------------------------------------------------
 
-data Property {s} (K : ℕ → Set s) : Set s where
+data Property {k} (K : ℕ → Set k) : Set k where
   associative commutative idempotent selective cancellative
     : (∙ : K 2) → Property K
 
@@ -105,6 +109,23 @@ data Property {s} (K : ℕ → Set s) : Set s where
 
   _distributesOverˡ_ _distributesOverʳ_ : (* + : K 2) → Property K
 
+module _ {k′} {F : Set k′ → Set k′} (applicative : RawApplicative F) where
+  open RawApplicative applicative
+
+  traverseProperty : ∀ {k} {K : ℕ → Set k} {K′ : ℕ → Set k′} → (∀ {n} → K n → F (K′ n)) → Property K → F (Property K′)
+  traverseProperty f (associative ∙)        = pure associative ⊛ f ∙
+  traverseProperty f (commutative ∙)        = pure commutative ⊛ f ∙
+  traverseProperty f (idempotent ∙)         = pure idempotent ⊛ f ∙
+  traverseProperty f (selective ∙)          = pure selective ⊛ f ∙
+  traverseProperty f (cancellative ∙)       = pure cancellative ⊛ f ∙
+  traverseProperty f (leftIdentity ε ∙)     = pure leftIdentity ⊛ f ε ⊛ f ∙
+  traverseProperty f (rightIdentity ε ∙)    = pure rightIdentity ⊛ f ε ⊛ f ∙
+  traverseProperty f (leftZero ω ∙)         = pure leftZero ⊛ f ω ⊛ f ∙
+  traverseProperty f (rightZero ω ∙)        = pure rightZero ⊛ f ω ⊛ f ∙
+  traverseProperty f (* distributesOverˡ +) = pure _distributesOverˡ_ ⊛ f * ⊛ f +
+  traverseProperty f (* distributesOverʳ +) = pure _distributesOverʳ_ ⊛ f * ⊛ f +
+
+-- mapProperty : ∀ {k k′} {K : ℕ → Set k} {K′ : ℕ → Set k′} → (∀ {n} → K n → K′ n) → Property K → Property K′
 
 module _ {c ℓ k} {K : ℕ → Set k} (rawStruct : RawStruct c ℓ K) where
   open RawStruct rawStruct
@@ -127,105 +148,250 @@ module _ {c ℓ k} {K : ℕ → Set k} (rawStruct : RawStruct c ℓ K) where
 ⟦ π ⟧P rawStruct = interpret rawStruct π
 
 --------------------------------------------------------------------------------
+--  Subsets of properties over a particular operator code type
+--------------------------------------------------------------------------------
+
+record Code k : Set (sucˡ k) where
+  field
+    K : ℕ → Set k
+    allAtArity : ∀ n → List (K n)
+
+  Property′ = Property K
+
+  -- TODO: Automate this with reflection. Also proofs of completeness.
+  allProperties : List Property′
+  allProperties =
+    let open List
+
+        p2 : K 2 → List Property′
+        p2 ∙
+          = associative ∙
+          ∷ commutative ∙
+          ∷ idempotent ∙
+          ∷ selective ∙
+          ∷ cancellative ∙
+          ∷ []
+        p02 : K 0 → K 2 → List Property′
+        p02 α ∙
+          = leftIdentity α ∙
+          ∷ rightIdentity α ∙
+          ∷ leftZero α ∙
+          ∷ rightZero α ∙
+          ∷ []
+        p22 : K 2 → K 2 → List Property′
+        p22 + *
+          = * distributesOverˡ +
+          ∷ * distributesOverʳ +
+          ∷ []
+
+        all0 : List (K 0)
+        all0 = allAtArity 0
+
+        all2 : List (K 2)
+        all2 = allAtArity 2
+    in   concatMap (λ ∙ →
+       p2 ∙
+         ++ concatMap (λ α →
+       p02 α ∙
+         ) all0) all2 ++
+         concatMap (λ + → concatMap (λ * →
+       p22 + *
+         ) all2) all2
+
+open Code using (Property′)
+
+open Bool
+
+record Properties {k} (code : Code k) : Set k where
+  constructor properties
+
+  open Code code
+
+  field
+    hasProperty : Property K → Bool
+
+  HasProperty : Property K → Set
+  HasProperty π = T (hasProperty π)
+
+  hasAll : Bool
+  hasAll = List.foldr (λ π → hasProperty π ∧_) true allProperties
+
+  HasAll : Set
+  HasAll = T hasAll
+
+open Properties public
+
+_∈ₚ_ : ∀ {k} {code : Code k} → Property′ code → Properties code → Set
+π ∈ₚ Π = HasProperty Π π
+
+_⇒ₚ_ : ∀ {k} {code : Code k} → Properties code → Properties code → Properties code
+hasProperty (Π₁ ⇒ₚ Π₂) π = not (hasProperty Π₁ π) ∨ hasProperty Π₂ π
+
+
+-- Has⇒ₚ : ∀ {k} {code : Code k} {Π Π′ : Properties code} {π : Property (Code.K code)} → π ∈ₚ Π′ → HasAll (Π′ ⇒ₚ Π) → π ∈ₚ Π
+-- Has⇒ₚ {Π = Π} {Π′} {π} hasπ hasΠ′ with hasProperty Π π | hasAll 
+-- Has⇒ₚ hasπ hasΠ′ = {!hasΠ′!}
+
+instance
+  truth : ⊤
+  truth = tt
+
+  -- T-HasProperty : ∀ {k} {K : ℕ → Set k} {Π : Properties K} {π} ⦃ isTrue : T (hasProperty Π π) ⦄ → π ∈ₚ Π
+  -- T-HasProperty {Π = Π} {π} ⦃ isTrue ⦄ with hasProperty Π π
+  -- T-HasProperty {Π = _} {_} ⦃ () ⦄ | false
+  -- T-HasProperty {Π = _} {_} ⦃ tt ⦄ | true = tt
+
+--------------------------------------------------------------------------------
 --  Structures with additional properties
 --------------------------------------------------------------------------------
 
-record Struct c ℓ {k} (K : ℕ → Set k) (Π : List (Property K)) : Set (sucˡ (c ⊔ˡ ℓ ⊔ˡ k)) where
+record Struct c ℓ {k} {code : Code k} (Π : Properties code) : Set (sucˡ (c ⊔ˡ ℓ ⊔ˡ k)) where
+  open Code code
+
   field
     rawStruct : RawStruct c ℓ K
-    properties : All (interpret rawStruct) Π
+    Π-hold : ∀ {π} → π ∈ₚ Π → ⟦ π ⟧P rawStruct
 
   open RawStruct rawStruct public
 
-  has : Property K → Set k
-  has π = π ∈ Π
+  has : Property K → Set
+  has π = π ∈ₚ Π
 
-  has′ : List (Property K) → Set k
-  has′ Π′ = Π′ ⊆ Π
+  has′ : Properties code → Set
+  has′ Π′ = HasAll (Π ⇒ₚ Π′)
 
   use : (π : Property K) ⦃ hasπ : has π ⦄ → ⟦ π ⟧P rawStruct
-  use π ⦃ hasπ ⦄ = All.lookup properties hasπ
+  use π ⦃ hasπ ⦄ = Π-hold hasπ
 
-  from : (Π′ : List (Property K)) (π : Property K) ⦃ hasπ : π ∈ Π′ ⦄ ⦃ hasΠ′ : has′ Π′ ⦄ → ⟦ π ⟧P rawStruct
-  from _ π ⦃ here ≡.refl ⦄ ⦃ p ∷ hasΠ′ ⦄ = use π ⦃ p ⦄
-  from _ _ ⦃ there hasπ ⦄ ⦃ _ ∷ hasΠ′ ⦄ = from _ _ ⦃ hasπ ⦄ ⦃ hasΠ′ ⦄
+  -- from : (Π′ : Properties code) (π : Property K) ⦃ hasπ : π ∈ₚ Π′ ⦄ ⦃ hasΠ′ : has′ Π′ ⦄ → ⟦ π ⟧P rawStruct
+  -- from Π′ π ⦃ hasπ ⦄ ⦃ hasΠ′ ⦄ = use π ⦃ {!!} ⦄
 
 --------------------------------------------------------------------------------
 --  Some named property combinations
 --------------------------------------------------------------------------------
 
--- data MonoidK : ℕ → Set where
-  
+private
+  Maybe-applicative : ∀ {ℓ} → RawApplicative {ℓ} Maybe
+  Maybe-applicative = record
+    { pure = just
+    ; _⊛_ = maybe Maybe.map λ _ → nothing
+    }
 
--- -- isSemigroup : List MagmaProperty
--- -- isSemigroup = associative ∷ []
+subΠ : ∀ {k k′} {code : Code k} {code′ : Code k′} →
+  let open Code code using (K)
+      open Code code′ using () renaming (K to K′)
+  in (∀ {n} → K′ n → Maybe (K n)) →
+     Properties code → Properties code′ → Properties code′
+hasProperty (subΠ f Π₀ Π₁) π with traverseProperty Maybe-applicative f π
+hasProperty (subΠ f Π₀ Π₁) π | just π′ = hasProperty Π₀ π′
+hasProperty (subΠ f Π₀ Π₁) π | nothing = hasProperty Π₁ π
 
--- -- isMonoid : List MagmaProperty
--- -- isMonoid = hasIdentity ∷ isSemigroup
+data MagmaK : ℕ → Set where
+  ∙ : MagmaK 2
 
--- -- isCommutativeMonoid : List MagmaProperty
--- -- isCommutativeMonoid = commutative ∷ isMonoid
+data MonoidK : ℕ → Set where
+  ε : MonoidK 0
+  ∙ : MonoidK 2
 
--- -- isSemiring : List BimagmaProperty
--- -- isSemiring
--- --   =  map on+ isCommutativeMonoid
--- --   ++ map on* isMonoid
--- --   ++ leftDistributive
--- --    ∷ rightDistributive
--- --    ∷ on* hasZero
--- --    ∷ []
--- --   where open List
+data BimonoidK : ℕ → Set where
+  0# 1# : BimonoidK 0
+  + * : BimonoidK 2
 
--- -- module Into where
--- --   open Algebra using (Semigroup; Monoid; CommutativeMonoid)
+module _ where
+  open Code
+  open ℕ
 
--- --   infixl 0 _↓M_
+  magmaCode : Code _
+  K magmaCode = MagmaK
+  allAtArity magmaCode (suc (suc zero)) = ∙ ∷ []
+  allAtArity magmaCode _ = []
 
--- --   _↓M_ : ∀ {c ℓ} {strongProps} → Dagma strongProps c ℓ → ∀ weakProps ⦃ sub : weakProps ⊆ strongProps ⦄ → Dagma weakProps c ℓ
--- --   _↓M_ dagma _ ⦃ sub ⦄ = record
--- --     { magma = magma
--- --     ; properties = getAll⊆ sub properties
--- --     }
--- --     where open Dagma dagma
+  monoidCode : Code _
+  K monoidCode = MonoidK
+  allAtArity monoidCode zero = ε ∷ []
+  allAtArity monoidCode (suc (suc zero)) = ∙ ∷ []
+  allAtArity monoidCode _ = []
 
--- --   _↓B_ : ∀ {c ℓ} {strongProps} → Bidagma strongProps c ℓ → ∀ weakProps ⦃ sub : weakProps ⊆ strongProps ⦄ → Bidagma weakProps c ℓ
--- --   _↓B_ bidagma _ ⦃ sub ⦄ = record
--- --     { bimagma = bimagma
--- --     ; properties = getAll⊆ sub properties
--- --     }
--- --     where open Bidagma bidagma
+  bimonoidCode : Code _
+  K bimonoidCode = BimonoidK
+  allAtArity bimonoidCode zero = 0# ∷ 1# ∷ []
+  allAtArity bimonoidCode (suc (suc zero)) = + ∷ * ∷ []
+  allAtArity bimonoidCode _ = []
 
--- --   semigroup : ∀ {c ℓ} {props} ⦃ _ : isSemigroup ⊆ props ⦄ → Dagma props c ℓ → Semigroup c ℓ
--- --   semigroup dagma = record
--- --     { isSemigroup = record
--- --       { isEquivalence = isEquivalence
--- --       ; assoc = from isSemigroup associative
--- --       ; ∙-cong = ∙-cong
--- --       }
--- --     }
--- --     where open Dagma dagma
++-part : ∀ {n} → BimonoidK n → Maybe (MonoidK n)
++-part 0# = just ε
++-part + = just ∙
++-part _ = nothing
 
--- --   monoid : ∀ {c ℓ} {props} ⦃ _ : isMonoid ⊆ props ⦄ → Dagma props c ℓ → Monoid c ℓ
--- --   monoid ⦃ mon ⦄ dagma = record
--- --     { isMonoid = record
--- --       { isSemigroup = S.isSemigroup
--- --       ; identity = proj₂ (from isMonoid hasIdentity)
--- --       }
--- --     }
--- --     where
--- --       open Dagma dagma
--- --       module S = Semigroup (semigroup (dagma ↓M isMonoid ↓M isSemigroup))
+*-part : ∀ {n} → BimonoidK n → Maybe (MonoidK n)
+*-part 1# = just ε
+*-part * = just ∙
+*-part _ = nothing
 
--- --   commutativeMonoid : ∀ {c ℓ} {props} ⦃ _ : isCommutativeMonoid ⊆ props ⦄ → Dagma props c ℓ → CommutativeMonoid c ℓ
--- --   commutativeMonoid dagma = record
--- --     { isCommutativeMonoid = record
--- --       { isSemigroup = S.isSemigroup
--- --       ; leftIdentity = proj₁ (proj₂ (from isCommutativeMonoid hasIdentity))
--- --       ; comm = from isCommutativeMonoid commutative
--- --       }
--- --     }
--- --     where
--- --       open Dagma dagma
--- --       module S = Semigroup (semigroup (dagma ↓M isCommutativeMonoid ↓M isSemigroup))
+isSemigroup : Properties magmaCode
+isSemigroup = properties
+  λ { (associative ∙) → true
+    ; _ → false}
 
--- --   -- semiring
+isMonoid : Properties monoidCode
+isMonoid = subΠ (λ {∙ → just ∙; _ → nothing}) isSemigroup (properties
+  λ { (leftIdentity ε ∙) → true
+    ; (rightIdentity ε ∙) → true
+    ; _ → false
+    })
+
+isCommutativeMonoid : Properties monoidCode
+isCommutativeMonoid = subΠ just isMonoid (properties
+  λ { (commutative ∙) → true
+    ; _ → false
+    })
+
+isSemiring : Properties bimonoidCode
+isSemiring =
+  subΠ +-part isCommutativeMonoid (
+  subΠ *-part isMonoid (properties
+  λ { (leftZero 0# *) → true
+    ; (rightZero 0# *) → true
+    ; (* distributesOverˡ +) → true
+    ; (* distributesOverʳ +) → true
+    ; _ → false
+    }))
+
+module Into where
+  open Algebra using (Semigroup; Monoid; CommutativeMonoid)
+
+  semigroup : ∀ {c ℓ} {Π : Properties magmaCode} ⦃ hasSemigroup : HasAll (Π ⇒ₚ isSemigroup) ⦄ → Struct c ℓ Π → Semigroup c ℓ
+  semigroup struct = record
+    { _∙_ = ⟦ ∙ ⟧
+    ; isSemigroup = record
+      { isEquivalence = isEquivalence
+      ; assoc = {!use (associative ∙)!}
+      ; ∙-cong = {!!}
+      }
+    }
+    where open Struct struct
+
+-- -- --   monoid : ∀ {c ℓ} {props} ⦃ _ : isMonoid ⊆ props ⦄ → Dagma props c ℓ → Monoid c ℓ
+-- -- --   monoid ⦃ mon ⦄ dagma = record
+-- -- --     { isMonoid = record
+-- -- --       { isSemigroup = S.isSemigroup
+-- -- --       ; identity = proj₂ (from isMonoid hasIdentity)
+-- -- --       }
+-- -- --     }
+-- -- --     where
+-- -- --       open Dagma dagma
+-- -- --       module S = Semigroup (semigroup (dagma ↓M isMonoid ↓M isSemigroup))
+
+-- -- --   commutativeMonoid : ∀ {c ℓ} {props} ⦃ _ : isCommutativeMonoid ⊆ props ⦄ → Dagma props c ℓ → CommutativeMonoid c ℓ
+-- -- --   commutativeMonoid dagma = record
+-- -- --     { isCommutativeMonoid = record
+-- -- --       { isSemigroup = S.isSemigroup
+-- -- --       ; leftIdentity = proj₁ (proj₂ (from isCommutativeMonoid hasIdentity))
+-- -- --       ; comm = from isCommutativeMonoid commutative
+-- -- --       }
+-- -- --     }
+-- -- --     where
+-- -- --       open Dagma dagma
+-- -- --       module S = Semigroup (semigroup (dagma ↓M isCommutativeMonoid ↓M isSemigroup))
+
+-- -- --   -- semiring
