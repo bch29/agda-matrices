@@ -1,12 +1,13 @@
 module MLib.Algebra.PropertyCode where
 
 open import MLib.Prelude
+open import MLib.Algebra.Instances
 
 open import Relation.Binary as B using (Setoid)
 
 open List using (_∷_; [])
 open import Data.List.All as All using (All; _∷_; []) public
-open import Data.List.Any using (here; there)
+open import Data.List.Any using (Any; here; there)
 open import Data.List.Any.Membership.Propositional using (_∈_)
 
 --------------------------------------------------------------------------------
@@ -145,7 +146,7 @@ module Interpret where
 --  Structures with additional properties
 --------------------------------------------------------------------------------
 
-record MagmaWith (propCodes : List MagmaProperty) c ℓ : Set (sucˡ (c ⊔ˡ ℓ)) where
+record Dagma (propCodes : List MagmaProperty) c ℓ : Set (sucˡ (c ⊔ˡ ℓ)) where
   field
     magma : Magma c ℓ
     properties : All (interpretInM magma) propCodes
@@ -158,8 +159,15 @@ record MagmaWith (propCodes : List MagmaProperty) c ℓ : Set (sucˡ (c ⊔ˡ �
   has : MagmaProperty → Set
   has prop = prop ∈ propCodes
 
+  has′ : List MagmaProperty → Set
+  has′ props = All (_∈ propCodes) props
+
   use : (prop : MagmaProperty) ⦃ hasProp : has prop ⦄ → ⟦ prop ⟧M magma
   use _ ⦃ hasProperty ⦄ = All.lookup properties hasProperty
+
+  from : (props : List MagmaProperty) (prop : MagmaProperty) ⦃ hasProp : prop ∈ props ⦄ ⦃ hasProps : props ⊆ propCodes ⦄ → ⟦ prop ⟧M magma
+  from .(prop ∷ _) prop ⦃ here ≡.refl ⦄ ⦃ p ∷ hasProps ⦄ = use prop ⦃ p ⦄
+  from .(_ ∷ _) prop ⦃ there hasProp ⦄ ⦃ _ ∷ hasProps ⦄ = from _ prop ⦃ hasProp ⦄ ⦃ hasProps ⦄
 
   -- If the algebra has an identity, it can be cumbersome to 'use' it, so these
   -- shortcuts help
@@ -172,7 +180,7 @@ record MagmaWith (propCodes : List MagmaProperty) c ℓ : Set (sucˡ (c ⊔ˡ �
   identity : ⦃ hasHasIdentity : has hasIdentity ⦄ → Identity ε _∙_
   identity = proj₂ (use hasIdentity)
 
-record BimagmaWith (propCodes : List BimagmaProperty) c ℓ : Set (sucˡ (c ⊔ˡ ℓ)) where
+record Bidagma (propCodes : List BimagmaProperty) c ℓ : Set (sucˡ (c ⊔ˡ ℓ)) where
   field
     bimagma : Bimagma c ℓ
     properties : All (interpretInB bimagma) propCodes
@@ -181,6 +189,9 @@ record BimagmaWith (propCodes : List BimagmaProperty) c ℓ : Set (sucˡ (c ⊔�
 
   has : BimagmaProperty → Set
   has prop = prop ∈ propCodes
+
+  has′ : List BimagmaProperty → Set
+  has′ props = All (_∈ propCodes) props
 
   use : (prop : BimagmaProperty) ⦃ hasProp : has prop ⦄ → ⟦ prop ⟧B bimagma
   use _ ⦃ hasProp ⦄ = All.lookup properties hasProp
@@ -201,42 +212,33 @@ record BimagmaWith (propCodes : List BimagmaProperty) c ℓ : Set (sucˡ (c ⊔�
     allMapMaybe p (_∷_ {_} px ap) | just y | ≡.[ eq ] = p eq px ∷ allMapMaybe p ap
     allMapMaybe p (_∷_ {_} px ap) | nothing | _ = allMapMaybe p ap
 
-  +-magmaWith : MagmaWith +-propCodes c ℓ
-  +-magmaWith = record { magma = +-magma ; properties = allMapMaybe (Interpret.from+-interpret bimagma) properties  }
+  +-dagma : Dagma +-propCodes c ℓ
+  +-dagma = record { magma = +-magma ; properties = allMapMaybe (Interpret.from+-interpret bimagma) properties  }
 
-  *-magmaWith : MagmaWith *-propCodes c ℓ
-  *-magmaWith = record { magma = *-magma ; properties = allMapMaybe (Interpret.from*-interpret bimagma) properties  }
+  *-dagma : Dagma *-propCodes c ℓ
+  *-dagma = record { magma = *-magma ; properties = allMapMaybe (Interpret.from*-interpret bimagma) properties  }
 
-  open MagmaWith +-magmaWith public
+  open Dagma +-dagma public
     using ()
     renaming
     ( properties to +-properties
     ; has to +-has
+    ; has′ to +-has′
     ; use to +-use
     ; ε to 0#
     ; identity to +-identity
     )
 
-  open MagmaWith *-magmaWith public
+  open Dagma *-dagma public
     using ()
     renaming
     ( properties to *-properties
     ; has to *-has
+    ; has′ to *-has′
     ; use to *-use
     ; ε to 1#
     ; identity to *-identity
     )
-
---------------------------------------------------------------------------------
---  Instances that help with property access
---------------------------------------------------------------------------------
-
-instance
-  head-here : ∀ {a} {A : Set a} {x : A} {xs} → x ∈ x ∷ xs
-  head-here = here ≡.refl
-
-  tail-there : ∀ {a} {A : Set a} {x x′ : A} {xs} ⦃ inTail : x ∈ xs ⦄ → x ∈ x′ ∷ xs
-  tail-there ⦃ inTail ⦄ = there inTail
 
 --------------------------------------------------------------------------------
 --  Some named property combinations
@@ -248,46 +250,48 @@ isSemigroup = associative ∷ []
 isMonoid : List MagmaProperty
 isMonoid = hasIdentity ∷ isSemigroup
 
+isCommutativeMonoid : List MagmaProperty
+isCommutativeMonoid = commutative ∷ isMonoid
+
 module Into where
   open Algebra using (Semigroup; Monoid; CommutativeMonoid)
 
-  weakerMagmaWith : ∀ {c ℓ} {p} {props} → MagmaWith (p ∷ props) c ℓ → MagmaWith props c ℓ
-  weakerMagmaWith magmaWith = record { magma = magma ; properties = All.tail properties }
-    where open MagmaWith magmaWith
+  dagma↓ : ∀ {c ℓ} weakProps {strongProps} ⦃ sub : weakProps ⊆ strongProps ⦄ → Dagma strongProps c ℓ → Dagma weakProps c ℓ
+  dagma↓ _ ⦃ sub ⦄ dagma = record
+    { magma = magma
+    ; properties = getAll⊆ sub properties
+    }
+    where open Dagma dagma
 
-  weakerBimagmaWith : ∀ {c ℓ} {p} {props} → BimagmaWith (p ∷ props) c ℓ → BimagmaWith props c ℓ
-  weakerBimagmaWith bimagmaWith = record { bimagma = bimagma ; properties = All.tail properties }
-    where open BimagmaWith bimagmaWith
-
-  semigroup : ∀ {c ℓ} → MagmaWith isSemigroup c ℓ → Semigroup c ℓ
-  semigroup magmaWith = record
+  semigroup : ∀ {c ℓ} {props} ⦃ _ : isSemigroup ⊆ props ⦄ → Dagma props c ℓ → Semigroup c ℓ
+  semigroup dagma = record
     { isSemigroup = record
       { isEquivalence = isEquivalence
-      ; assoc = use associative
+      ; assoc = from isSemigroup associative
       ; ∙-cong = ∙-cong
       }
     }
-    where open MagmaWith magmaWith
+    where open Dagma dagma
 
-  monoid : ∀ {c ℓ} → MagmaWith isMonoid c ℓ → Monoid c ℓ
-  monoid magmaWith = record
+  monoid : ∀ {c ℓ} {props} ⦃ _ : isMonoid ⊆ props ⦄ → Dagma props c ℓ → Monoid c ℓ
+  monoid ⦃ mon ⦄ dagma = record
     { isMonoid = record
       { isSemigroup = S.isSemigroup
-      ; identity = identity
+      ; identity = proj₂ (from isMonoid hasIdentity)
       }
     }
     where
-      open MagmaWith magmaWith
-      module S = Semigroup (semigroup (weakerMagmaWith magmaWith))
+      open Dagma dagma
+      module S = Semigroup (semigroup (dagma↓ isSemigroup (dagma↓ isMonoid dagma)))
 
-  commutativeMonoid : ∀ {c ℓ} → MagmaWith (commutative ∷ isMonoid) c ℓ → CommutativeMonoid c ℓ
-  commutativeMonoid magmaWith = record
+  commutativeMonoid : ∀ {c ℓ} {props} ⦃ _ : isCommutativeMonoid ⊆ props ⦄ → Dagma props c ℓ → CommutativeMonoid c ℓ
+  commutativeMonoid dagma = record
     { isCommutativeMonoid = record
       { isSemigroup = S.isSemigroup
-      ; identityˡ = proj₁ identity
-      ; comm = use commutative
+      ; identityˡ = proj₁ (proj₂ (from isCommutativeMonoid hasIdentity))
+      ; comm = from isCommutativeMonoid commutative
       }
     }
     where
-      open MagmaWith magmaWith
-      module S = Semigroup (semigroup (weakerMagmaWith (weakerMagmaWith magmaWith)))
+      open Dagma dagma
+      module S = Semigroup (semigroup (dagma↓ isSemigroup (dagma↓ isCommutativeMonoid dagma)))

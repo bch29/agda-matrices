@@ -1,9 +1,9 @@
 module MLib.Matrix where
 
 open import MLib.Prelude
-open import MLib.Algebra.Renamings
+open import MLib.Algebra.PropertyCode
 
-open Algebra using (Semiring; Monoid; CommutativeMonoid; IsMonoid; IsCommutativeMonoid)
+open Algebra using (CommutativeMonoid)
 
 -- open Data.Table
 
@@ -35,58 +35,54 @@ module _ {ℓ} where
     setoid : Setoid _ _
     setoid = record { isEquivalence = isEquivalence }
 
-  module +-Monoids {p} (monoid : Monoid ℓ p) where
-    open Monoid′.Additive● monoid
-    open ⊕ using () renaming (Carrier to S; _≈_ to _≈′_)
+  module Additive {p} (props : List MagmaProperty) (dagma : Dagma props ℓ p) where
+    open Dagma dagma renaming (_∙_ to _+_; ε to 0#; Carrier to S; _≈_ to _≈′_; ∙-cong to +-cong)
 
     module _ {m n : ℕ} where
-      open Setoids ⊕.setoid {m} {n}
+      open Setoids setoid {m} {n}
       open Algebra.FunctionProperties _≈_
 
-      _+_ : Matrix S m n → Matrix S m n → Matrix S m n
-      (A + B) i j = A i j ⊕ B i j
+      _⊕_ : Matrix S m n → Matrix S m n → Matrix S m n
+      (A ⊕ B) i j = A i j + B i j
 
-      0# : Matrix S m n
-      0# _ _ = 0●
+      ⊕-cong : Congruent₂ _⊕_
+      ⊕-cong p q = λ i j → +-cong (p i j) (q i j)
 
-      module +-Monoid where
-        ∙-cong : Congruent₂ _+_
-        ∙-cong p q = λ i j → ⊕.cong (p i j) (q i j)
+      assoc : ⦃ _ : has associative ⦄ → Associative _⊕_
+      assoc A B C i j = use associative (A i j) (B i j) (C i j)
 
-        assoc : Associative _+_
-        assoc A B C i j = ⊕.assoc (A i j) (B i j) (C i j)
+      module _ ⦃ _ : has hasIdentity ⦄ where
+        0● : Matrix S m n
+        0● _ _ = 0#
 
-        identityˡ : LeftIdentity 0# _+_
-        identityˡ A i j = proj₁ (⊕.identity) (A i j)
+        identityˡ : LeftIdentity 0● _⊕_
+        identityˡ A i j = proj₁ identity (A i j)
 
-        identityʳ : RightIdentity 0# _+_
-        identityʳ A i j = proj₂ (⊕.identity) (A i j)
+        identityʳ : RightIdentity 0● _⊕_
+        identityʳ A i j = proj₂ identity (A i j)
 
-        identity : Identity 0# _+_
-        identity = identityˡ , identityʳ
+  module Bimagmas {p} (props : List BimagmaProperty) (bidagma : Bidagma props ℓ p) where
+    open Bidagma bidagma
+      renaming (Carrier to S; _≈_ to _≈′_)
 
-      +-monoid : IsMonoid _≈_ _+_ 0#
-      +-monoid = record { isSemigroup = record { Setoids ⊕.setoid; +-Monoid } ; +-Monoid }
+    module _ ⦃ _ : +-has′ isCommutativeMonoid ⦄ where
+      +-commutativeMonoid : CommutativeMonoid ℓ p
+      +-commutativeMonoid = Into.commutativeMonoid +-dagma
 
-  -- module Semirings {p} (semiring : Semiring ℓ p) where
-  --   private module S = Semiring semiring
-  --   open S using () renaming (Carrier to S; _+_ to _⊕_; _*_ to _⊛_; _≈_ to _≈′_)
-  --   private
-  --     module M where
-  --       open import MLib.Monoids.Commutative S.+-commutativeMonoid public
-  --       open import MLib.Monoids.Permutations S.+-commutativeMonoid public
-  --   open M using (sum; sum-syntax)
+      private
+        module M where
+          open import Algebra.Operations.CommutativeMonoid +-commutativeMonoid public
+          open import Algebra.Properties.CommutativeMonoid +-commutativeMonoid public
+      open M using (sumTable; sumTable-syntax)
 
-  --   open +-Monoids M.monoid
-
-  --   sumDistribˡ : ∀ {n} c f → c ⊛ sum n f ≈′ ∑[ i < n ] (c ⊛ f i)
-  --   sumDistribˡ {Nat.zero} _ _ = proj₂ S.zero _
-  --   sumDistribˡ {Nat.suc n} c f =
-  --     begin
-  --       c ⊛ (f _ ⊕ sum n (f ∘ Fin.suc))                 ≈⟨ proj₁ S.distrib _ _ _ ⟩
-  --       c ⊛ f _ ⊕ c ⊛ sum _ (f ∘ Fin.suc)               ≈⟨ S.+-cong S.refl (sumDistribˡ c (f ∘ Fin.suc)) ⟩
-  --       c ⊛ f _ ⊕ sum _ (λ x → c ⊛ (f ∘ Fin.suc) x)     ∎
-  --     where open EqReasoning S.setoid
+      -- sumDistribˡ : ∀ {n} c f → c ⊛ sum n f ≈′ ∑[ i < n ] (c ⊛ f i)
+      -- sumDistribˡ {Nat.zero} _ _ = proj₂ S.zero _
+      -- sumDistribˡ {Nat.suc n} c f =
+      --   begin
+      --     c ⊛ (f _ ⊕ sum n (f ∘ Fin.suc))                 ≈⟨ proj₁ S.distrib _ _ _ ⟩
+      --     c ⊛ f _ ⊕ c ⊛ sum _ (f ∘ Fin.suc)               ≈⟨ S.+-cong S.refl (sumDistribˡ c (f ∘ Fin.suc)) ⟩
+      --     c ⊛ f _ ⊕ sum _ (λ x → c ⊛ (f ∘ Fin.suc) x)     ∎
+      --   where open EqReasoning S.setoid
 
   --   sumDistribʳ : ∀ {n} c f → sum n f ⊛ c ≈′ ∑[ i < n ] (f i ⊛ c)
   --   sumDistribʳ {Nat.zero} _ _ = proj₁ S.zero _
