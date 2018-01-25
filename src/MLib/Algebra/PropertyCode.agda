@@ -10,325 +10,222 @@ open import Data.List.All as All using (All; _∷_; []) public
 open import Data.List.Any using (Any; here; there)
 open import Data.List.Any.Membership.Propositional using (_∈_)
 
+open import Data.Vec using (Vec; _∷_; [])
+open import Data.Vec.N-ary
+open import Data.Vec.Relation.InductivePointwise using (Pointwise; []; _∷_)
+
+
+module _ {c ℓ} {A : Set c} (_≈_ : Rel A ℓ) where
+  open Algebra.FunctionProperties _≈_
+
+  Congruentₙ : ∀ {n} → (Vec A n → A) → Set (c ⊔ˡ ℓ)
+  Congruentₙ {n} f = ∀ {xs ys} → Pointwise _≈_ xs ys → f xs ≈ f ys
+
+  fromRefl : (∀ {x} → x ≈ x) → (f : Vec A 0 → A) → Congruentₙ f
+  fromRefl refl f [] = refl
+
+  fromCongruent₂ : (f : Vec A 2 → A) → Congruent₂ (curryⁿ f) → Congruentₙ f
+  fromCongruent₂ f cong₂ (x≈u ∷ y≈v ∷ []) = cong₂ x≈u y≈v
+
+PointwiseFunc : ∀ {n} {a b ℓ r} {A : Set a} {B : Set b} (_∼_ : A → B → Set ℓ) (xs : Vec A n) (ys : Vec B n) (R : Set r) → Set (N-ary-level ℓ r n)
+PointwiseFunc _∼_ [] [] R = R
+PointwiseFunc _∼_ (x ∷ xs) (y ∷ ys) R = x ∼ y → PointwiseFunc _∼_ xs ys R
+
+appPW : ∀ {n} {a b ℓ r} {A : Set a} {B : Set b} {_∼_ : A → B → Set ℓ} {xs : Vec A n} {ys : Vec B n} {R : Set r} → PointwiseFunc _∼_ xs ys R → Pointwise _∼_ xs ys → R
+appPW f [] = f
+appPW f (x∼y ∷ pw) = appPW (f x∼y) pw
+
+curryPW : ∀ {n} {a b ℓ r} {A : Set a} {B : Set b} {_∼_ : A → B → Set ℓ} {xs : Vec A n} {ys : Vec B n} {R : Set r} → (Pointwise _∼_ xs ys → R) → PointwiseFunc _∼_ xs ys R
+curryPW {xs = []} {[]} f = f []
+curryPW {xs = x ∷ xs} {y ∷ ys} f x∼y = curryPW {xs = xs} {ys} λ pw → f (x∼y ∷ pw)
+
 --------------------------------------------------------------------------------
---  Is<Structure>
+--  Raw structures implementing a set of operators, i.e. interpretations of the
+--  operators which are each congruent under an equivalence, but do not
+--  necessarily have any other properties.
 --------------------------------------------------------------------------------
 
-record IsMagma {c ℓ} {A : Set c} (≈ : Rel A ℓ) (∙ : A → A → A) : Set (c ⊔ˡ ℓ) where
-  open Algebra.FunctionProperties ≈
+record IsRawStruct {c ℓ} {A : Set c} (_≈_ : Rel A ℓ) {k} {K : ℕ → Set k} (appOp : ∀ {n} → K n → Vec A n → A) : Set (c ⊔ˡ ℓ ⊔ˡ k) where
+  open Algebra.FunctionProperties _≈_
   field
-    isEquivalence : IsEquivalence ≈
-    ∙-cong : Congruent₂ ∙
+    isEquivalence : IsEquivalence _≈_
+    congⁿ : ∀ {n} (κ : K n) → Congruentₙ _≈_ (appOp κ)
+
+  cong : ∀ {n} (κ : K n) {xs ys} → PointwiseFunc _≈_ xs ys (appOp κ xs ≈ appOp κ ys)
+  cong κ {xs} = curryPW {xs = xs} (congⁿ κ)
 
   setoid : Setoid _ _
   setoid = record { isEquivalence = isEquivalence }
 
-  open IsEquivalence isEquivalence public
+  ⟦_⟧ : ∀ {n} → K n → N-ary n A A
+  ⟦ κ ⟧ = curryⁿ (appOp κ)
 
-record IsBimagma {c ℓ} {A : Set c} (≈ : Rel A ℓ) (+ * : A → A → A) : Set (c ⊔ˡ ℓ) where
-  open Algebra.FunctionProperties ≈
-  field
-    isEquivalence : IsEquivalence ≈
-    +-cong : Congruent₂ +
-    *-cong : Congruent₂ *
+  point : K 0 → A
+  point = ⟦_⟧
 
-  setoid : Setoid _ _
-  setoid = record { isEquivalence = isEquivalence }
-
-  +-isMagma : IsMagma ≈ +
-  +-isMagma = record { isEquivalence = isEquivalence ; ∙-cong = +-cong }
-
-  *-isMagma : IsMagma ≈ *
-  *-isMagma = record { isEquivalence = isEquivalence ; ∙-cong = *-cong }
+  _⟨_⟩_ : A → K 2 → A → A
+  x ⟨ κ ⟩ y = ⟦ κ ⟧ x y
 
   open IsEquivalence isEquivalence public
 
---------------------------------------------------------------------------------
---  Structures
---------------------------------------------------------------------------------
-
-record Magma c ℓ : Set (sucˡ (c ⊔ˡ ℓ)) where
+record RawStruct c ℓ {k} (K : ℕ → Set k) : Set (sucˡ (c ⊔ˡ ℓ ⊔ˡ k)) where
   infix 4 _≈_
-  infixl 7 _∙_
 
   field
     Carrier : Set c
     _≈_ : Rel Carrier ℓ
-    _∙_ : Carrier → Carrier → Carrier
-    isMagma : IsMagma _≈_ _∙_
+    appOp : ∀ {n} → K n → Vec Carrier n → Carrier
+    isRawStruct : IsRawStruct _≈_ appOp
 
-  open IsMagma isMagma public
+  open IsRawStruct isRawStruct public
 
-record Bimagma c ℓ : Set (sucˡ (c ⊔ˡ ℓ)) where
-  infix 4 _≈_
-  infixl 6 _+_
-  infixl 7 _*_
+  -- If we pick out a subset of the operators in the structure, that too forms a
+  -- structure.
+  subRawStruct : ∀ {k′} (K′ : ∀ {n} → K n → Set k′) → RawStruct c ℓ (λ n → Σ (K n) K′)
+  subRawStruct K′ = record
+    { Carrier = Carrier
+    ; _≈_ = _≈_
+    ; appOp = appOp ∘ proj₁
+    ; isRawStruct = record
+      { isEquivalence = isEquivalence
+      ; congⁿ = congⁿ ∘ proj₁
+      }
+    }
 
+--------------------------------------------------------------------------------
+--  Universe of properties
+--------------------------------------------------------------------------------
+
+data Property {s} (K : ℕ → Set s) : Set s where
+  associative commutative idempotent selective cancellative
+    : (∙ : K 2) → Property K
+
+  leftIdentity rightIdentity : (ε : K 0) (∙ : K 2) → Property K
+  leftZero rightZero : (ω : K 0) (∙ : K 2) → Property K
+
+  _distributesOverˡ_ _distributesOverʳ_ : (* + : K 2) → Property K
+
+
+module _ {c ℓ k} {K : ℕ → Set k} (rawStruct : RawStruct c ℓ K) where
+  open RawStruct rawStruct
+  open Algebra.FunctionProperties _≈_
+
+  interpret : Property K → Set (c ⊔ˡ ℓ)
+  interpret (associative ∙) = Associative ⟦ ∙ ⟧
+  interpret (commutative ∙) = Commutative ⟦ ∙ ⟧
+  interpret (idempotent ∙) = Idempotent ⟦ ∙ ⟧
+  interpret (selective ∙) = Selective ⟦ ∙ ⟧
+  interpret (cancellative ∙) = Cancellative ⟦ ∙ ⟧
+  interpret (leftIdentity ε ∙) = LeftIdentity ⟦ ε ⟧ ⟦ ∙ ⟧
+  interpret (rightIdentity ε ∙) = RightIdentity ⟦ ε ⟧ ⟦ ∙ ⟧
+  interpret (leftZero ω ∙) = LeftZero ⟦ ω ⟧ ⟦ ∙ ⟧
+  interpret (rightZero ω ∙) = RightZero ⟦ ω ⟧ ⟦ ∙ ⟧
+  interpret (* distributesOverˡ +) = ⟦ * ⟧ DistributesOverˡ ⟦ + ⟧
+  interpret (* distributesOverʳ +) = ⟦ * ⟧ DistributesOverʳ ⟦ + ⟧
+
+⟦_⟧P : ∀ {c ℓ k} {K : ℕ → Set k} → Property K → RawStruct c ℓ K → Set (c ⊔ˡ ℓ)
+⟦ π ⟧P rawStruct = interpret rawStruct π
+
+--------------------------------------------------------------------------------
+--  Structures with additional properties
+--------------------------------------------------------------------------------
+
+record Struct c ℓ {k} (K : ℕ → Set k) (Π : List (Property K)) : Set (sucˡ (c ⊔ˡ ℓ ⊔ˡ k)) where
   field
-    Carrier : Set c
-    _≈_ : Rel Carrier ℓ
-    _+_ : Carrier → Carrier → Carrier
-    _*_ : Carrier → Carrier → Carrier
-    isBimagma : IsBimagma _≈_ _+_ _*_
+    rawStruct : RawStruct c ℓ K
+    properties : All (interpret rawStruct) Π
 
-  open IsBimagma isBimagma public
+  open RawStruct rawStruct public
 
-  +-magma : Magma _ _
-  +-magma = record { isMagma = +-isMagma }
+  has : Property K → Set k
+  has π = π ∈ Π
 
-  *-magma : Magma _ _
-  *-magma = record { isMagma = *-isMagma }
+  has′ : List (Property K) → Set k
+  has′ Π′ = Π′ ⊆ Π
+
+  use : (π : Property K) ⦃ hasπ : has π ⦄ → ⟦ π ⟧P rawStruct
+  use π ⦃ hasπ ⦄ = All.lookup properties hasπ
+
+  from : (Π′ : List (Property K)) (π : Property K) ⦃ hasπ : π ∈ Π′ ⦄ ⦃ hasΠ′ : has′ Π′ ⦄ → ⟦ π ⟧P rawStruct
+  from _ π ⦃ here ≡.refl ⦄ ⦃ p ∷ hasΠ′ ⦄ = use π ⦃ p ⦄
+  from _ _ ⦃ there hasπ ⦄ ⦃ _ ∷ hasΠ′ ⦄ = from _ _ ⦃ hasπ ⦄ ⦃ hasΠ′ ⦄
 
 --------------------------------------------------------------------------------
---  Property codes
+--  Some named property combinations
 --------------------------------------------------------------------------------
 
-data MagmaProperty {s} (Σ₀ : Set s) : Set s where
-  associative commutative idempotent
-    : MagmaProperty Σ₀
-  identity zero : Σ₀ → MagmaProperty Σ₀
+-- data MonoidK : ℕ → Set where
+  
 
-data BimagmaProperty {s} (Σ₀ : Set s) : Set s where
-  leftDistributive rightDistributive
-    : BimagmaProperty Σ₀
-  on+ on* : MagmaProperty Σ₀ → BimagmaProperty Σ₀
+-- -- isSemigroup : List MagmaProperty
+-- -- isSemigroup = associative ∷ []
 
-module Interpret {s} {Σ₀ : Set s} where
-  module _ {c ℓ} (magma : Magma c ℓ) (⟦_⟧ : Σ₀ → Magma.Carrier magma) where
-    open Magma magma
-    open Algebra.FunctionProperties _≈_
+-- -- isMonoid : List MagmaProperty
+-- -- isMonoid = hasIdentity ∷ isSemigroup
 
-    ⟦_,_⊢_⟧M : MagmaProperty Σ₀ → Set (c ⊔ˡ ℓ)
-    ⟦_,_⊢_⟧M associative = Associative _∙_
-    ⟦_,_⊢_⟧M commutative = Commutative _∙_
-    ⟦_,_⊢_⟧M idempotent = Idempotent _∙_
-    ⟦_,_⊢_⟧M (identity ε₀) = Identity ⟦ ε₀ ⟧ _∙_
-    ⟦_,_⊢_⟧M (zero ω₀) = Zero ⟦ ω₀ ⟧ _∙_
+-- -- isCommutativeMonoid : List MagmaProperty
+-- -- isCommutativeMonoid = commutative ∷ isMonoid
 
-  module _ {c ℓ} (bimagma : Bimagma c ℓ) (⟦_⟧ : Σ₀ → Bimagma.Carrier bimagma) where
-    open Bimagma bimagma
-    open Algebra.FunctionProperties _≈_
+-- -- isSemiring : List BimagmaProperty
+-- -- isSemiring
+-- --   =  map on+ isCommutativeMonoid
+-- --   ++ map on* isMonoid
+-- --   ++ leftDistributive
+-- --    ∷ rightDistributive
+-- --    ∷ on* hasZero
+-- --    ∷ []
+-- --   where open List
 
-    ⟦_,_⊢_⟧B : BimagmaProperty Σ₀ → Set (c ⊔ˡ ℓ)
-    ⟦_,_⊢_⟧B leftDistributive = _*_ DistributesOverˡ _+_
-    ⟦_,_⊢_⟧B rightDistributive = _*_ DistributesOverʳ _+_
-    ⟦_,_⊢_⟧B (on+ c) = ⟦ +-magma , ⟦_⟧ ⊢ c ⟧M
-    ⟦_,_⊢_⟧B (on* c) = ⟦ *-magma , ⟦_⟧ ⊢ c ⟧M
+-- -- module Into where
+-- --   open Algebra using (Semigroup; Monoid; CommutativeMonoid)
 
--- module Interpret where
---   from+ : BimagmaProperty → Maybe MagmaProperty
---   from+ (on+ c) = just c
---   from+ _ = nothing
+-- --   infixl 0 _↓M_
 
---   from* : BimagmaProperty → Maybe MagmaProperty
---   from* (on* c) = just c
---   from* _ = nothing
+-- --   _↓M_ : ∀ {c ℓ} {strongProps} → Dagma strongProps c ℓ → ∀ weakProps ⦃ sub : weakProps ⊆ strongProps ⦄ → Dagma weakProps c ℓ
+-- --   _↓M_ dagma _ ⦃ sub ⦄ = record
+-- --     { magma = magma
+-- --     ; properties = getAll⊆ sub properties
+-- --     }
+-- --     where open Dagma dagma
 
---   from+-interpret : ∀ {c ℓ} (bimagma : Bimagma c ℓ) {b} {m} → from+ b ≡ just m →
---     let open Bimagma bimagma
---     in ⟦ b ⟧B bimagma → ⟦ m ⟧M +-magma
---   from+-interpret bimagma {on+ x} ≡.refl p = p
---   from+-interpret bimagma {leftDistributive} () p
---   from+-interpret bimagma {rightDistributive} () p
---   from+-interpret bimagma {on* x} () p
+-- --   _↓B_ : ∀ {c ℓ} {strongProps} → Bidagma strongProps c ℓ → ∀ weakProps ⦃ sub : weakProps ⊆ strongProps ⦄ → Bidagma weakProps c ℓ
+-- --   _↓B_ bidagma _ ⦃ sub ⦄ = record
+-- --     { bimagma = bimagma
+-- --     ; properties = getAll⊆ sub properties
+-- --     }
+-- --     where open Bidagma bidagma
 
---   from*-interpret : ∀ {c ℓ} (bimagma : Bimagma c ℓ) {b} {m} → from* b ≡ just m →
---     let open Bimagma bimagma
---     in ⟦ b ⟧B bimagma → ⟦ m ⟧M *-magma
---   from*-interpret bimagma {on* x} ≡.refl p = p
---   from*-interpret bimagma {leftDistributive} () p
---   from*-interpret bimagma {rightDistributive} () p
---   from*-interpret bimagma {on+ x} () p
+-- --   semigroup : ∀ {c ℓ} {props} ⦃ _ : isSemigroup ⊆ props ⦄ → Dagma props c ℓ → Semigroup c ℓ
+-- --   semigroup dagma = record
+-- --     { isSemigroup = record
+-- --       { isEquivalence = isEquivalence
+-- --       ; assoc = from isSemigroup associative
+-- --       ; ∙-cong = ∙-cong
+-- --       }
+-- --     }
+-- --     where open Dagma dagma
 
--- --------------------------------------------------------------------------------
--- --  Structures with additional properties
--- --------------------------------------------------------------------------------
+-- --   monoid : ∀ {c ℓ} {props} ⦃ _ : isMonoid ⊆ props ⦄ → Dagma props c ℓ → Monoid c ℓ
+-- --   monoid ⦃ mon ⦄ dagma = record
+-- --     { isMonoid = record
+-- --       { isSemigroup = S.isSemigroup
+-- --       ; identity = proj₂ (from isMonoid hasIdentity)
+-- --       }
+-- --     }
+-- --     where
+-- --       open Dagma dagma
+-- --       module S = Semigroup (semigroup (dagma ↓M isMonoid ↓M isSemigroup))
 
--- record Dagma (propCodes : List MagmaProperty) c ℓ : Set (sucˡ (c ⊔ˡ ℓ)) where
---   field
---     magma : Magma c ℓ
---     properties : All (interpretInM magma) propCodes
+-- --   commutativeMonoid : ∀ {c ℓ} {props} ⦃ _ : isCommutativeMonoid ⊆ props ⦄ → Dagma props c ℓ → CommutativeMonoid c ℓ
+-- --   commutativeMonoid dagma = record
+-- --     { isCommutativeMonoid = record
+-- --       { isSemigroup = S.isSemigroup
+-- --       ; leftIdentity = proj₁ (proj₂ (from isCommutativeMonoid hasIdentity))
+-- --       ; comm = from isCommutativeMonoid commutative
+-- --       }
+-- --     }
+-- --     where
+-- --       open Dagma dagma
+-- --       module S = Semigroup (semigroup (dagma ↓M isCommutativeMonoid ↓M isSemigroup))
 
---   open Magma magma public
-
---   -- We can 'use' any property that the algebra is equipped with to get easy
---   -- access to it
-
---   has : MagmaProperty → Set
---   has prop = prop ∈ propCodes
-
---   has′ : List MagmaProperty → Set
---   has′ props = All (_∈ propCodes) props
-
---   use : (prop : MagmaProperty) ⦃ hasProp : has prop ⦄ → ⟦ prop ⟧M magma
---   use _ ⦃ hasProperty ⦄ = All.lookup properties hasProperty
-
---   from : (props : List MagmaProperty) (prop : MagmaProperty) ⦃ hasProp : prop ∈ props ⦄ ⦃ hasProps : props ⊆ propCodes ⦄ → ⟦ prop ⟧M magma
---   from .(prop ∷ _) prop ⦃ here ≡.refl ⦄ ⦃ p ∷ hasProps ⦄ = use prop ⦃ p ⦄
---   from .(_ ∷ _) prop ⦃ there hasProp ⦄ ⦃ _ ∷ hasProps ⦄ = from _ prop ⦃ hasProp ⦄ ⦃ hasProps ⦄
-
---   -- If the algebra has an identity, it can be cumbersome to 'use' it, so these
---   -- shortcuts help
-
---   open Algebra.FunctionProperties _≈_
-
---   ε : ⦃ hasHasIdentity : has hasIdentity ⦄ → Carrier
---   ε = proj₁ (use hasIdentity)
-
---   identity : ⦃ hasHasIdentity : has hasIdentity ⦄ → Identity ε _∙_
---   identity = proj₂ (use hasIdentity)
-
--- record Bidagma (propCodes : List BimagmaProperty) c ℓ : Set (sucˡ (c ⊔ˡ ℓ)) where
---   field
---     bimagma : Bimagma c ℓ
---     properties : All (interpretInB bimagma) propCodes
-
---   open Bimagma bimagma public
-
---   has : BimagmaProperty → Set
---   has prop = prop ∈ propCodes
-
---   has′ : List BimagmaProperty → Set
---   has′ props = All (_∈ propCodes) props
-
---   use : (prop : BimagmaProperty) ⦃ hasProp : has prop ⦄ → ⟦ prop ⟧B bimagma
---   use _ ⦃ hasProp ⦄ = All.lookup properties hasProp
-
---   +-propCodes : List MagmaProperty
---   +-propCodes = List.mapMaybe Interpret.from+ propCodes
-
---   *-propCodes : List MagmaProperty
---   *-propCodes = List.mapMaybe Interpret.from* propCodes
-
---   private
---     allMapMaybe :
---       ∀ {a b p q} {A : Set a} {B : Set b}
---         {Σ₀ : A → Set p} {Q : B → Set q} {f : A → Maybe B} (p : ∀ {x y} → f x ≡ just y → Σ₀ x → Q y)
---         {xs : List A} → All Σ₀ xs → All Q (List.mapMaybe f xs)
---     allMapMaybe p [] = []
---     allMapMaybe {f = f} p (_∷_ {x} px ap) with f x | ≡.inspect f x
---     allMapMaybe p (_∷_ {_} px ap) | just y | ≡.[ eq ] = p eq px ∷ allMapMaybe p ap
---     allMapMaybe p (_∷_ {_} px ap) | nothing | _ = allMapMaybe p ap
-
---   +-dagma : Dagma +-propCodes c ℓ
---   +-dagma = record { magma = +-magma ; properties = allMapMaybe (Interpret.from+-interpret bimagma) properties  }
-
---   *-dagma : Dagma *-propCodes c ℓ
---   *-dagma = record { magma = *-magma ; properties = allMapMaybe (Interpret.from*-interpret bimagma) properties  }
-
---   open Dagma +-dagma public
---     using ()
---     renaming
---     ( properties to +-properties
---     ; has to +-has
---     ; has′ to +-has′
---     ; use to +-use
---     ; ε to 0#
---     ; identity to +-identity
---     )
-
---   open Dagma *-dagma public
---     using ()
---     renaming
---     ( properties to *-properties
---     ; has to *-has
---     ; has′ to *-has′
---     ; use to *-use
---     ; ε to 1#
---     ; identity to *-identity
---     )
-
---   open Algebra.FunctionProperties _≈_
-
---   0#′ : ⦃ _ : *-has hasZero ⦄ → Carrier
---   0#′ = proj₁ (*-use hasZero)
-
---   zero′ : ⦃ _ : *-has hasZero ⦄ → Zero 0#′ _*_
---   zero′ = proj₂ (*-use hasZero)
-
---   -- -- If a zero for * and an identity for + both exist, they are equal so long as
---   -- -- the bimagma is distributive
---   -- 0#≈0#′ : ⦃ _ : +-has hasIdentity ⦄ ⦃ _ : *-has hasZero ⦄ ⦃ _ : has rightDistributive ⦄ → 0# ≈ 0#′
---   -- 0#≈0#′ =
---   --   begin
---   --     0#                      ≈⟨ ? ⟩
---   --     0# + 0#                 ≈⟨ ? ⟩
---   --     0#′                     ∎
---   --   where open EqReasoning setoid
-
--- --------------------------------------------------------------------------------
--- --  Some named property combinations
--- --------------------------------------------------------------------------------
-
--- isSemigroup : List MagmaProperty
--- isSemigroup = associative ∷ []
-
--- isMonoid : List MagmaProperty
--- isMonoid = hasIdentity ∷ isSemigroup
-
--- isCommutativeMonoid : List MagmaProperty
--- isCommutativeMonoid = commutative ∷ isMonoid
-
--- isSemiring : List BimagmaProperty
--- isSemiring
---   =  map on+ isCommutativeMonoid
---   ++ map on* isMonoid
---   ++ leftDistributive
---    ∷ rightDistributive
---    ∷ on* hasZero
---    ∷ []
---   where open List
-
--- module Into where
---   open Algebra using (Semigroup; Monoid; CommutativeMonoid)
-
---   infixl 0 _↓M_
-
---   _↓M_ : ∀ {c ℓ} {strongProps} → Dagma strongProps c ℓ → ∀ weakProps ⦃ sub : weakProps ⊆ strongProps ⦄ → Dagma weakProps c ℓ
---   _↓M_ dagma _ ⦃ sub ⦄ = record
---     { magma = magma
---     ; properties = getAll⊆ sub properties
---     }
---     where open Dagma dagma
-
---   _↓B_ : ∀ {c ℓ} {strongProps} → Bidagma strongProps c ℓ → ∀ weakProps ⦃ sub : weakProps ⊆ strongProps ⦄ → Bidagma weakProps c ℓ
---   _↓B_ bidagma _ ⦃ sub ⦄ = record
---     { bimagma = bimagma
---     ; properties = getAll⊆ sub properties
---     }
---     where open Bidagma bidagma
-
---   semigroup : ∀ {c ℓ} {props} ⦃ _ : isSemigroup ⊆ props ⦄ → Dagma props c ℓ → Semigroup c ℓ
---   semigroup dagma = record
---     { isSemigroup = record
---       { isEquivalence = isEquivalence
---       ; assoc = from isSemigroup associative
---       ; ∙-cong = ∙-cong
---       }
---     }
---     where open Dagma dagma
-
---   monoid : ∀ {c ℓ} {props} ⦃ _ : isMonoid ⊆ props ⦄ → Dagma props c ℓ → Monoid c ℓ
---   monoid ⦃ mon ⦄ dagma = record
---     { isMonoid = record
---       { isSemigroup = S.isSemigroup
---       ; identity = proj₂ (from isMonoid hasIdentity)
---       }
---     }
---     where
---       open Dagma dagma
---       module S = Semigroup (semigroup (dagma ↓M isMonoid ↓M isSemigroup))
-
---   commutativeMonoid : ∀ {c ℓ} {props} ⦃ _ : isCommutativeMonoid ⊆ props ⦄ → Dagma props c ℓ → CommutativeMonoid c ℓ
---   commutativeMonoid dagma = record
---     { isCommutativeMonoid = record
---       { isSemigroup = S.isSemigroup
---       ; identityˡ = proj₁ (proj₂ (from isCommutativeMonoid hasIdentity))
---       ; comm = from isCommutativeMonoid commutative
---       }
---     }
---     where
---       open Dagma dagma
---       module S = Semigroup (semigroup (dagma ↓M isCommutativeMonoid ↓M isSemigroup))
-
---   -- semiring
+-- --   -- semiring
