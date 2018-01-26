@@ -30,11 +30,11 @@ record Finite {a} (A : Set a) : Set a where
     enumerateAt : ∀ {N} → A ↞ Fin N → List A
     enumerateAt fromFin = Table.toList (enumTableAt fromFin)
 
-  enumerateTable : Table A N
-  enumerateTable = enumTableAt fromFin
+  enumTable : Table A N
+  enumTable = enumTableAt fromFin
 
   enumerate : List A
-  enumerate = Table.toList enumerateTable
+  enumerate = Table.toList enumTable
 
   module _ {c ℓ} (icMonoid : IdempotentCommutativeMonoid c ℓ) where
     open IdempotentCommutativeMonoid icMonoid renaming (Carrier to S)
@@ -47,48 +47,23 @@ record Finite {a} (A : Set a) : Set a where
         to = LeftInverse.to fromFin′ ⟨$⟩_
 
         enumTable′ : Table A (Nat.suc n)
-        enumTable′ = tabulate from
+        enumTable′ = enumTableAt fromFin′
 
-        enumerate′ : List A
-        enumerate′ = Table.toList enumTable′
-
-        enumTable-complete′ : ∀ (f : ≡.setoid A ⟶ setoid) x → (f ⟨$⟩ x) ∙ sumTable (map (f ⟨$⟩_) enumTable′) ≈ sumTable (map (f ⟨$⟩_) enumTable′)
+        enumTable-complete′ : ∀ f x → f x ∙ sumTable (map f enumTable′) ≈ sumTable (map f enumTable′)
         enumTable-complete′ f x =
           begin
-            f$ x ∙ sumTable (map f$ enumTable′)                                            ≈⟨ ∙-cong refl (sumTable-permute (map f$ enumTable′) (Fin.swapIndices Fin.zero i)) ⟩
-            f$ x ∙ sumTable (permute (Fin.swapIndices Fin.zero i) (map f$ enumTable′))     ≡⟨⟩
-            f$ x ∙ (f$ (from (to x)) ∙ _)                                                  ≈⟨ ∙-cong refl (∙-cong (cong f (LeftInverse.left-inverse-of fromFin′ x)) refl) ⟩
-            f$ x ∙ (f$ x ∙ _)                                                              ≈⟨ sym (assoc _ _ _) ⟩
-            (f$ x ∙ f$ x) ∙ _                                                              ≈⟨ ∙-cong (idem _) refl ⟩
-            f$ x ∙ _                                                                       ≈⟨ ∙-cong (cong f (≡.sym (LeftInverse.left-inverse-of fromFin′ x))) refl ⟩
-            f$ (from (to x)) ∙ _                                                           ≡⟨⟩
-            sumTable (permute (Fin.swapIndices Fin.zero i) (map f$ enumTable′))            ≈⟨ sym (sumTable-permute (map f$ enumTable′) (Fin.swapIndices Fin.zero i)) ⟩
-            sumTable (map f$ enumTable′)                                                   ∎
+            f x ∙ sumTable (map f enumTable′)                                         ≈⟨ ∙-cong refl (sumTable-permute (map f enumTable′) (Fin.swapIndices Fin.zero i)) ⟩
+            f x ∙ sumTable (permute (Fin.swapIndices Fin.zero i) (map f enumTable′))  ≡⟨⟩
+            f x ∙ (f (from (to x)) ∙ _)                                               ≡⟨ ≡.cong₂ _∙_ ≡.refl (≡.cong₂ _∙_ (≡.cong f (LeftInverse.left-inverse-of fromFin′ x)) ≡.refl) ⟩
+            f x ∙ (f x ∙ _)                                                           ≈⟨ sym (assoc _ _ _) ⟩
+            (f x ∙ f x) ∙ _                                                           ≈⟨ ∙-cong (idem _) refl ⟩
+            f x ∙ _                                                                   ≡⟨ ≡.cong₂ _∙_ (≡.cong f (≡.sym (LeftInverse.left-inverse-of fromFin′ x))) ≡.refl ⟩
+            f (from (to x)) ∙ _                                                       ≡⟨⟩
+            sumTable (permute (Fin.swapIndices Fin.zero i) (map f enumTable′))        ≈⟨ sym (sumTable-permute (map f enumTable′) (Fin.swapIndices Fin.zero i)) ⟩
+            sumTable (map f enumTable′)                                               ∎
           where
             i = to x
-            f$ = f ⟨$⟩_
 
-            open EqReasoning setoid
-
-        sum/map-hom : ∀ {n} {a}{A : Set a} (f : A → S) (t : Table A n) → sum (List.map f (toList t)) ≡ sumTable (map f t)
-        sum/map-hom f t =
-          begin
-            sum (List.map f (toList t))   ≡⟨ ≡.cong sum (Table.map-toList-hom f t) ⟩
-            sum (toList (map f t))        ≡⟨ ≡.sym (sumTable-toList (map f t)) ⟩
-            sumTable (map f t)            ∎
-          where
-            open ≡.Reasoning
-
-        enumerate-complete′ : ∀ (f : ≡.setoid A ⟶ setoid) x → (f ⟨$⟩ x) ∙ sum (List.map (f ⟨$⟩_) enumerate′) ≈ sum (List.map (f ⟨$⟩_) enumerate′)
-        enumerate-complete′ f x =
-          begin
-            f$ x ∙ sum (List.map f$ enumerate′)           ≡⟨⟩
-            f$ x ∙ sum (List.map f$ (toList enumTable′))  ≡⟨ ≡.cong₂ _∙_ ≡.refl (sum/map-hom f$ enumTable′) ⟩
-            f$ x ∙ sumTable (map f$ enumTable′)           ≈⟨ enumTable-complete′ f x ⟩
-            sumTable (map f$ enumTable′)                  ≡⟨ ≡.sym (sum/map-hom f$ enumTable′) ⟩
-            sum (List.map f$ enumerate′)                  ∎
-          where
-            f$ = f ⟨$⟩_
             open EqReasoning setoid
 
     private
@@ -96,9 +71,46 @@ record Finite {a} (A : Set a) : Set a where
       inhabited Fin.zero = _ , ≡.refl
       inhabited (Fin.suc i) = _ , ≡.refl
 
-    enumerate-complete′′ : ∀ {N} (fromFin′ : A ↞ Fin N) (f : ≡.setoid A ⟶ setoid) x → (f ⟨$⟩ x) ∙ sum (List.map (f ⟨$⟩_) (enumerateAt fromFin′)) ≈ sum (List.map (f ⟨$⟩_) (enumerateAt fromFin′))
-    enumerate-complete′′ fromFin′ f x with inhabited (LeftInverse.to fromFin′ ⟨$⟩ x)
-    enumerate-complete′′ fromFin′ f x | n , ≡.refl = enumerate-complete′ fromFin′ f x
+      enumTable-complete′′ : ∀ {N} (fromFin′ : A ↞ Fin N) f x → f x ∙ sumTable (Table.map f (enumTableAt fromFin′)) ≈ sumTable (Table.map f (enumTableAt fromFin′))
+      enumTable-complete′′ fromFin′ f x with inhabited (LeftInverse.to fromFin′ ⟨$⟩ x)
+      enumTable-complete′′ fromFin′ f x | n , ≡.refl = enumTable-complete′ fromFin′ f x
 
-    enumerate-complete : ∀ (f : ≡.setoid A ⟶ setoid) x → (f ⟨$⟩ x) ∙ sum (List.map (f ⟨$⟩_) enumerate) ≈ sum (List.map (f ⟨$⟩_) enumerate)
-    enumerate-complete = enumerate-complete′′ fromFin
+      sum/map-hom : ∀ {n} {a}{A : Set a} (f : A → S) (t : Table A n) → sum (List.map f (toList t)) ≡ sumTable (map f t)
+      sum/map-hom f t =
+        begin
+          sum (List.map f (toList t))   ≡⟨ ≡.cong sum (Table.map-toList-hom f t) ⟩
+          sum (toList (map f t))        ≡⟨ ≡.sym (sumTable-toList (map f t)) ⟩
+          sumTable (map f t)            ∎
+        where
+          open ≡.Reasoning
+
+
+    -- Enumeration is complete: in any idempotent commutative monoid, adding one
+    -- more element to the sum won't change it. In particular, this works in the
+    -- powerset monoid, where 'f' is the singleton at its argument and addition
+    -- is set union. This shows that every member of 'A' is present in the
+    -- enumeration (even though the powerset monoid is quite difficult to
+    -- implement in Agda so this proof is not present).
+
+    enumTable-complete : ∀ f x → f x ∙ sumTable (map f enumTable) ≈ sumTable (map f enumTable)
+    enumTable-complete = enumTable-complete′′ fromFin
+
+    enumerate-complete : ∀ f x → f x ∙ sum (List.map f enumerate) ≈ sum (List.map f enumerate)
+    enumerate-complete f x =
+      begin
+        f x ∙ sum (List.map f enumerate)           ≡⟨⟩
+        f x ∙ sum (List.map f (toList enumTable))  ≡⟨ ≡.cong₂ _∙_ ≡.refl (sum/map-hom f enumTable) ⟩
+        f x ∙ sumTable (map f enumTable)           ≈⟨ enumTable-complete f x ⟩
+        sumTable (map f enumTable)                 ≡⟨ ≡.sym (sum/map-hom f enumTable) ⟩
+        sum (List.map f enumerate)                 ∎
+      where
+        open EqReasoning setoid
+
+finiteΣ : ∀ {a b} {A : Set a} {B : A → Set b} → Finite A → (∀ x → Finite (B x)) → Finite (∃ B)
+finiteΣ Finite-A Finite-B-at-A =
+  let open Finite
+      allA = enumerate Finite-A
+  in record
+     { N = List.sum (List.map (N ∘ Finite-B-at-A) allA)
+     ; fromFin = {!!}
+     }
