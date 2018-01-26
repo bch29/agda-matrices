@@ -6,7 +6,7 @@ open Fin using (Fin)
 
 open Algebra using (Monoid)
 
-import Data.List as List
+import Data.List.Any as Any
 import Data.List.Any.Membership as Membership
 
 module _ {c p} (setoid : Setoid c p) where
@@ -80,23 +80,38 @@ record Finite {c p} (F-setoid : Setoid c p) : Set (sucˡ (c ⊔ˡ p)) where
     enum-exhaustive : ∀ {x} → x ∈ enumerate (List-monoid F-setoid) [_]
     enum-unique : ∀ {x} → (p q : x ∈ enumerate (List-monoid F-setoid) [_]) → p ≡ q
 
-module _ {n : ℕ} where
-  open Membership (≡.setoid (Fin n))
+module _ where
   open List
 
-  private
+  module _ {n} where
+    open Membership (≡.setoid (Fin n)) public
+
     module _ (monoid : Monoid zeroˡ zeroˡ) where
       open Monoid monoid renaming (Carrier to M)
 
       enumerate : MonoidOps.Enumerate monoid (Fin n)
       enumerate = Fin.foldMap ε _∙_
 
-    enum-exhaustive : ∀ {i} → i ∈ enumerate (List-monoid (≡.setoid (Fin n))) [_]
-    enum-exhaustive {Fin.zero} = {!!}
-    enum-exhaustive {Fin.suc i} = {!!}
+  enum-exhaustive′ : ∀ {m n} {i} (f : Fin m → Fin n) → f i ∈ enumerate (List-monoid (≡.setoid (Fin n))) ([_] ∘ f)
+  enum-exhaustive′ {i = Fin.zero} f = Any.here ≡.refl
+  enum-exhaustive′ {i = Fin.suc i} f = Any.there (enum-exhaustive′ (f ∘ Fin.suc))
 
-    enum-unique : ∀ {x} → (p q : x ∈ enumerate (List-monoid (≡.setoid (Fin n))) [_]) → p ≡ q
-    enum-unique p q = {!!}
+  enum-exhaustive : ∀ {n} {i} → i ∈ enumerate (List-monoid (≡.setoid (Fin n))) [_]
+  enum-exhaustive = enum-exhaustive′ id
 
-  Fin-Finite : Finite (≡.setoid (Fin n))
-  Fin-Finite = record { enumerate = enumerate ; enum-exhaustive = {!!} ; enum-unique = {!!} }
+  0∉suc : ∀ {m n} (f : Fin m → Fin n) → ¬ Fin.zero ∈ Fin.foldUpto m [] (λ i is → Fin.suc (f i) ∷ is)
+  0∉suc {ℕ.zero} _ ()
+  0∉suc {ℕ.suc n} _ (Any.here ())
+  0∉suc {ℕ.suc n} f (Any.there z∈suc) = 0∉suc (f ∘ Fin.suc) z∈suc
+
+  enum-unique′ : ∀ {m n} (f : Fin m → Fin n) {i} → (p q : i ∈ enumerate (List-monoid (≡.setoid (Fin n))) ([_] ∘ f)) → p ≡ q
+  enum-unique′ {ℕ.zero} _ ()
+  enum-unique′ {ℕ.suc n} _ (Any.here ≡.refl) (Any.here ≡.refl) = ≡.refl
+  enum-unique′ {ℕ.suc n} f (Any.here ≡.refl) (Any.there q) = {!!}
+  enum-unique′ {ℕ.suc n} f (Any.there p) (Any.here ≡.refl) = {!!}
+  enum-unique′ {ℕ.suc n} f (Any.there p) (Any.there q) = {!!}
+
+  -- enum-unique : ∀ {n} {x} → (p q : x ∈ enumerate (List-monoid (≡.setoid (Fin n))) [_]) → p ≡ q
+
+    -- Fin-Finite : Finite (≡.setoid (Fin n))
+    -- Fin-Finite = record { enumerate = enumerate ; enum-exhaustive = {!!} ; enum-unique = {!!} }
