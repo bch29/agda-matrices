@@ -23,8 +23,15 @@ record Finite {a} (A : Set a) : Set a where
   open Table hiding (setoid)
   open List using ([]; _∷_)
 
+  private
+    enumTableAt : ∀ {N} → A ↞ Fin N → Table A N
+    enumTableAt fromFin = tabulate (LeftInverse.from fromFin ⟨$⟩_)
+
+    enumerateAt : ∀ {N} → A ↞ Fin N → List A
+    enumerateAt fromFin = Table.toList (enumTableAt fromFin)
+
   enumerateTable : Table A N
-  enumerateTable = tabulate (LeftInverse.from fromFin ⟨$⟩_)
+  enumerateTable = enumTableAt fromFin
 
   enumerate : List A
   enumerate = Table.toList enumerateTable
@@ -89,6 +96,9 @@ record Finite {a} (A : Set a) : Set a where
       inhabited Fin.zero = _ , ≡.refl
       inhabited (Fin.suc i) = _ , ≡.refl
 
+    enumerate-complete′′ : ∀ {N} (fromFin′ : A ↞ Fin N) (f : ≡.setoid A ⟶ setoid) x → (f ⟨$⟩ x) ∙ sum (List.map (f ⟨$⟩_) (enumerateAt fromFin′)) ≈ sum (List.map (f ⟨$⟩_) (enumerateAt fromFin′))
+    enumerate-complete′′ fromFin′ f x with inhabited (LeftInverse.to fromFin′ ⟨$⟩ x)
+    enumerate-complete′′ fromFin′ f x | n , ≡.refl = enumerate-complete′ fromFin′ f x
+
     enumerate-complete : ∀ (f : ≡.setoid A ⟶ setoid) x → (f ⟨$⟩ x) ∙ sum (List.map (f ⟨$⟩_) enumerate) ≈ sum (List.map (f ⟨$⟩_) enumerate)
-    enumerate-complete f x with inhabited (LeftInverse.to fromFin ⟨$⟩ x)
-    enumerate-complete f x | n , p = {!!}
+    enumerate-complete = enumerate-complete′′ fromFin
