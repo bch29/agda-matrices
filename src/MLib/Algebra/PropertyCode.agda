@@ -1,6 +1,8 @@
 module MLib.Algebra.PropertyCode where
 
 open import MLib.Prelude
+open import MLib.Prelude.Fin.Pieces
+open import MLib.Prelude.FiniteInj
 open import MLib.Algebra.Instances
 
 open import Relation.Binary as B using (Setoid)
@@ -14,11 +16,18 @@ open import Data.Vec using (Vec; _∷_; [])
 open import Data.Vec.N-ary
 open import Data.Vec.Relation.InductivePointwise using (Pointwise; []; _∷_)
 
+open import Data.Product.Relation.SigmaPropositional as OverΣ using (OverΣ)
+
 open import Data.Bool using (T)
 
 open import Category.Applicative
 
-open import Function.Injection using (_↣_)
+open import Function.Inverse using (_↔_)
+open import Function.LeftInverse using (_↞_; LeftInverse)
+open import Function.Equality using (_⟨$⟩_)
+
+-- import Data.Table as Table hiding (module Table)
+open Table using (Table)
 
 
 module _ {c ℓ} {A : Set c} (_≈_ : Rel A ℓ) where
@@ -110,6 +119,93 @@ data Property {k} (K : ℕ → Set k) : Set k where
   leftZero rightZero : (ω : K 0) (∙ : K 2) → Property K
 
   _distributesOverˡ_ _distributesOverʳ_ : (* + : K 2) → Property K
+
+finiteProperty : ∀ {c ℓ} → PointwiseFiniteSet ℕ c ℓ → FiniteSet _ _
+finiteProperty finiteK = record
+  { Carrier = Property K
+  ; _≈_ = _≡_
+  ; N = N
+  ; isFiniteSet = record
+    { isEquivalence = ≡.isEquivalence
+    ; ontoFin = liftConstructors pieces (Table.lookup args) {!!} {!!}
+    }
+  }
+  where
+    module K = PointwiseFiniteSet finiteK
+    open K using () renaming (Carrier to K)
+
+    open Nat using (_+_; _*_)
+    open Fin using (zero; suc; #_)
+
+    argsL : List (Set _)
+    argsL
+      = K 2 ∷ K 2 ∷ K 2 ∷ K 2 ∷ K 2
+      ∷ (K 0 × K 2) ∷ (K 0 × K 2)
+      ∷ (K 0 × K 2) ∷ (K 0 × K 2)
+      ∷ (K 2 × K 2) ∷ (K 2 × K 2)
+      ∷ []
+
+    count = List.length argsL
+
+    args : Table (Set _) _
+    args = Table.fromList argsL
+
+    sizes : Table ℕ _
+    sizes = Table.fromList
+      ( K.boundAt 2 ∷ K.boundAt 2 ∷ K.boundAt 2 ∷ K.boundAt 2 ∷ K.boundAt 2
+      ∷ (K.boundAt 0 * K.boundAt 2) ∷ (K.boundAt 0 * K.boundAt 2)
+      ∷ (K.boundAt 0 * K.boundAt 2) ∷ (K.boundAt 0 * K.boundAt 2)
+      ∷ (K.boundAt 2 * K.boundAt 2) ∷ (K.boundAt 2 * K.boundAt 2)
+      ∷ [])
+
+    mkProperty : ∀ i → Table.lookup args i → Property K
+    mkProperty zero = associative
+    mkProperty (suc i) x = {!!}
+
+    -- mkProperty : Property K ↞ ∃ (Table.lookup args)
+    -- mkProperty =
+    --   { to = {!!}
+    --   ; from = {!!}
+    --   ; left-inverse-of = {!!}
+    --   }
+
+    pieces : Pieces ℕ id
+    pieces = record
+      { numPieces = count
+      ; pieces = sizes
+      }
+
+    N = Pieces.totalSize pieces
+
+    -- ksize : ∀ {m} (op : K m) → Fin (K.boundAt m)
+    -- ksize {m} op = LeftInverse.to (K.ontoFin m) ⟨$⟩ op
+    -- inj = intoPiece² pieces
+
+    -- inj* : ∀ {m n} → Fin m → Fin n → Fin (m * n)
+    -- inj* zero j = Fin.inject+ _ j
+    -- inj* {n = n} (suc i) j = Fin.raise n (inj* i j)
+
+    -- to : Property K → Fin N
+    -- to (associative ∙)        = inj (# 0) (# 0) (ksize ∙)
+    -- to (commutative ∙)        = inj (# 0) (# 1) (ksize ∙)
+    -- to (idempotent ∙)         = inj (# 0) (# 2) (ksize ∙)
+    -- to (selective ∙)          = inj (# 0) (# 3) (ksize ∙)
+    -- to (cancellative ∙)       = inj (# 0) (# 4) (ksize ∙)
+    -- to (leftIdentity ε ∙)     = inj (# 1) (# 0) (inj* (ksize ε) (ksize ∙))
+    -- to (rightIdentity ε ∙)    = inj (# 1) (# 1) (inj* (ksize ε) (ksize ∙))
+    -- to (leftZero ω ∙)         = inj (# 1) (# 2) (inj* (ksize ω) (ksize ∙))
+    -- to (rightZero ω ∙)        = inj (# 1) (# 3) (inj* (ksize ω) (ksize ∙))
+    -- to (* distributesOverˡ +) = inj (# 2) (# 0) (inj* (ksize *) (ksize +))
+    -- to (* distributesOverʳ +) = inj (# 2) (# 1) (inj* (ksize *) (ksize +))
+
+    -- bij₁ : Σ (Fin 3) (λ i → Fin (Pieces.totalSize (Pieces.pieceAt pieces i))) ↔ Fin N
+    -- bij₁ = asPiece pieces
+
+    -- bij₂ : Σ (Fin 3) (λ i →
+    --                      Σ (Fin (Pieces.numPieces (Pieces.pieceAt pieces i)))
+    --                      (Fin ∘ Pieces.sizeAt (Pieces.pieceAt pieces i))) ↔ Fin N
+    -- bij₂ = asPiece² pieces
+
 
 module _ {k′} {F : Set k′ → Set k′} (applicative : RawApplicative F) where
   open RawApplicative applicative

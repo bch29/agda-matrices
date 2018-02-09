@@ -1,9 +1,17 @@
 module MLib.Prelude.Fin where
 
-open import MLib.Prelude.FromStdlib
+open import MLib.Prelude.FromStdlib hiding (module Σ)
 
 open import Data.Fin public
 open import Data.Fin.Properties public
+
+open import Data.Table as Table using (Table) hiding (module Table)
+
+open import Function.LeftInverse using (LeftInverse; _↞_)
+open import Function.Equality using (_⟶_; _⟨$⟩_; cong)
+
+import Relation.Binary.Indexed as I
+import Data.Product.Relation.SigmaPointwise as Σ
 
 --------------------------------------------------------------------------------
 --  Types
@@ -78,18 +86,43 @@ inject-refute Nat.zero {suc i} _()
 inject-refute (Nat.suc n) {suc i} (zero) p ()
 inject-refute (Nat.suc n) {suc i} (suc x) p q = inject-refute _ _ (suc-injective p) (suc-injective q)
 
-data Compare′ {n} : (i j : Fin n) → Set where
-  less′ : ∀ i j → i < j → Compare′ i j
-  equal′ : ∀ i → Compare′ i i
-  greater′ : ∀ i j → j < i → Compare′ i j
-
 inject-< : ∀ {n} (i : Fin n) (j : Fin′ i) → inject j < i
 inject-< zero ()
 inject-< (suc i) zero = Nat.s≤s Nat.z≤n
 inject-< (suc i) (suc j) = Nat.s≤s (inject-< i j)
 
-compare′ : ∀ {n} (i j : Fin n) → Compare′ i j
-compare′ i j with compare i j
-compare′ .(inject least) j | less .j least = less′ _ _ (inject-< _ _)
-compare′ i .i | equal .i = equal′ _
-compare′ i .(inject least) | greater .i least = greater′ _ _ (inject-< _ _)
+data Compareℕ {m} : (i : Fin m) (n : ℕ) → Set where
+  less : ∀ bound (least : Fin′ bound) {greatest} → Compareℕ (inject! least) greatest
+  equal : ∀ i → Compareℕ i (toℕ i)
+  greater : ∀ greatest (least : Fin′ greatest) → Compareℕ greatest (toℕ least)
+
+compareℕ : ∀ {m} (i : Fin m) (n : ℕ) → Compareℕ i n
+compareℕ zero ℕ.zero = equal _
+compareℕ zero (ℕ.suc n) = less (suc zero) zero
+compareℕ (suc i) ℕ.zero = greater (suc i) zero
+compareℕ (suc i) (ℕ.suc n) with compareℕ i n
+compareℕ (suc .(inject! least)) (ℕ.suc n) | less bound least = less (suc bound) (suc least)
+compareℕ (suc i) (ℕ.suc .(toℕ i)) | equal .i = equal (suc i)
+compareℕ (suc i) (ℕ.suc .(toℕ least)) | greater .i least = greater (suc i) (suc least)
+
+reduce+ : ∀ m {n} (i : Fin (m Nat.+ n)) → (∃ λ (j : Fin m) → inject+ n j ≡ i) ⊎ ∃ λ j → raise m j ≡ i
+reduce+ ℕ.zero i = inj₂ (i , ≡.refl)
+reduce+ (ℕ.suc m) zero = inj₁ (zero , ≡.refl)
+reduce+ (ℕ.suc m) (suc i) with reduce+ m i
+reduce+ (ℕ.suc m) (suc i) | inj₁ (j , p) = inj₁ (suc j , ≡.cong suc p)
+reduce+ (ℕ.suc m) (suc i) | inj₂ (j , p) = inj₂ (j , ≡.cong suc p)
+
+inject+-injective : ∀ {n m} {i j : Fin m} → inject+ n i ≡ inject+ n j → i ≡ j
+inject+-injective {i = zero} {zero} p = ≡.refl
+inject+-injective {i = zero} {suc j} ()
+inject+-injective {i = suc i} {zero} ()
+inject+-injective {n} {i = suc i} {suc j} p = ≡.cong suc (inject+-injective {n} (suc-injective p))
+
+raise≢ : ∀ m n {i : Fin m} {j : Fin n} → ¬ raise n i ≡ inject+ m j
+raise≢ _ _ {j = zero} ()
+raise≢ _ _ {j = suc _} p = ⊥-elim (raise≢ _ _ (suc-injective p))
+
+raise-injective : ∀ {m} n {i j : Fin m} → raise n i ≡ raise n j → i ≡ j
+raise-injective ℕ.zero {i} {j} p = p
+raise-injective (ℕ.suc n) {i} {j} p = raise-injective n (suc-injective p)
+
