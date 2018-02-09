@@ -10,7 +10,7 @@ module Table where
 open Table using (Table; tabulate; lookup) hiding (module Table)
 
 open import Function.LeftInverse using (LeftInverse; _↞_)
-open import Function.Equality using (_⟶_; _⟨$⟩_; cong)
+open import Function.Equality as FE using (_⟶_; _⟨$⟩_; cong)
 
 open Algebra using (IdempotentCommutativeMonoid)
 
@@ -119,6 +119,32 @@ record IsFiniteSet {c ℓ} {A : Set c} (_≈_ : Rel A ℓ) (N : ℕ) : Set (c �
       where
         f = func ⟨$⟩_
         open EqReasoning S.setoid
+
+empty-isFinite : ∀ {c ℓ} {A : Set c} {_≈_ : Rel A ℓ} → ¬ A → IsFiniteSet _≈_ 0
+empty-isFinite ¬A = record
+  { isEquivalence = record { refl = λ {x} → ⊥-elim (¬A x) ; sym = λ {x} → ⊥-elim (¬A x) ; trans = λ {x} → ⊥-elim (¬A x) }
+  ; ontoFin = record
+    { to = record { _⟨$⟩_ = ⊥-elim ∘ ¬A ; cong = λ {x} → ⊥-elim (¬A x) }
+    ; from = record { _⟨$⟩_ = λ () ; cong = λ {i} → ⊥-elim (nofin0 i) }
+    ; left-inverse-of = ⊥-elim ∘ ¬A
+    }
+  }
+  where
+    nofin0 : ¬ Fin 0
+    nofin0 ()
+
+unitary-isFinite : ∀ {c ℓ} (setoid : Setoid c ℓ) →
+  let open Setoid setoid
+  in ∀ x → (∀ y → x ≈ y) → IsFiniteSet _≈_ 1
+unitary-isFinite setoid x unique = record
+  { isEquivalence = isEquivalence
+  ; ontoFin = record
+    { to = FE.const Fin.zero
+    ; from = FE.const x
+    ; left-inverse-of = unique
+    }
+  }
+  where open Setoid setoid
 
 record FiniteSet c ℓ : Set (sucˡ (c ⊔ˡ ℓ)) where
   field

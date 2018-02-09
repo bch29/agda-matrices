@@ -111,305 +111,192 @@ record RawStruct c ℓ {k} (K : ℕ → Set k) : Set (sucˡ (c ⊔ˡ ℓ ⊔ˡ k
 --  Universe of properties
 --------------------------------------------------------------------------------
 
-data Property {k} (K : ℕ → Set k) : Set k where
+data Property : Set where
   associative commutative idempotent selective cancellative
-    : (∙ : K 2) → Property K
+    leftIdentity rightIdentity
+    leftZero rightZero
+    distributesOverˡ distributesOverʳ
+    : Property
 
-  leftIdentity rightIdentity : (ε : K 0) (∙ : K 2) → Property K
-  leftZero rightZero : (ω : K 0) (∙ : K 2) → Property K
-
-  _distributesOverˡ_ _distributesOverʳ_ : (* + : K 2) → Property K
-
-finiteProperty : ∀ {c ℓ} → PointwiseFiniteSet ℕ c ℓ → FiniteSet _ _
-finiteProperty finiteK = record
-  { Carrier = Property K
-  ; _≈_ = _≡_
-  ; N = N
-  ; isFiniteSet = record
-    { isEquivalence = ≡.isEquivalence
-    ; ontoFin = liftConstructors pieces (Table.lookup args) {!!} {!!}
-    }
-  }
-  where
-    module K = PointwiseFiniteSet finiteK
-    open K using () renaming (Carrier to K)
-
-    open Nat using (_+_; _*_)
-    open Fin using (zero; suc; #_)
-
-    argsL : List (Set _)
-    argsL
-      = K 2 ∷ K 2 ∷ K 2 ∷ K 2 ∷ K 2
-      ∷ (K 0 × K 2) ∷ (K 0 × K 2)
-      ∷ (K 0 × K 2) ∷ (K 0 × K 2)
-      ∷ (K 2 × K 2) ∷ (K 2 × K 2)
-      ∷ []
-
-    count = List.length argsL
-
-    args : Table (Set _) _
-    args = Table.fromList argsL
-
-    sizes : Table ℕ _
-    sizes = Table.fromList
-      ( K.boundAt 2 ∷ K.boundAt 2 ∷ K.boundAt 2 ∷ K.boundAt 2 ∷ K.boundAt 2
-      ∷ (K.boundAt 0 * K.boundAt 2) ∷ (K.boundAt 0 * K.boundAt 2)
-      ∷ (K.boundAt 0 * K.boundAt 2) ∷ (K.boundAt 0 * K.boundAt 2)
-      ∷ (K.boundAt 2 * K.boundAt 2) ∷ (K.boundAt 2 * K.boundAt 2)
-      ∷ [])
-
-    mkProperty : ∀ i → Table.lookup args i → Property K
-    mkProperty zero = associative
-    mkProperty (suc i) x = {!!}
-
-    -- mkProperty : Property K ↞ ∃ (Table.lookup args)
-    -- mkProperty =
-    --   { to = {!!}
-    --   ; from = {!!}
-    --   ; left-inverse-of = {!!}
-    --   }
-
-    pieces : Pieces ℕ id
-    pieces = record
-      { numPieces = count
-      ; pieces = sizes
-      }
-
-    N = Pieces.totalSize pieces
-
-    -- ksize : ∀ {m} (op : K m) → Fin (K.boundAt m)
-    -- ksize {m} op = LeftInverse.to (K.ontoFin m) ⟨$⟩ op
-    -- inj = intoPiece² pieces
-
-    -- inj* : ∀ {m n} → Fin m → Fin n → Fin (m * n)
-    -- inj* zero j = Fin.inject+ _ j
-    -- inj* {n = n} (suc i) j = Fin.raise n (inj* i j)
-
-    -- to : Property K → Fin N
-    -- to (associative ∙)        = inj (# 0) (# 0) (ksize ∙)
-    -- to (commutative ∙)        = inj (# 0) (# 1) (ksize ∙)
-    -- to (idempotent ∙)         = inj (# 0) (# 2) (ksize ∙)
-    -- to (selective ∙)          = inj (# 0) (# 3) (ksize ∙)
-    -- to (cancellative ∙)       = inj (# 0) (# 4) (ksize ∙)
-    -- to (leftIdentity ε ∙)     = inj (# 1) (# 0) (inj* (ksize ε) (ksize ∙))
-    -- to (rightIdentity ε ∙)    = inj (# 1) (# 1) (inj* (ksize ε) (ksize ∙))
-    -- to (leftZero ω ∙)         = inj (# 1) (# 2) (inj* (ksize ω) (ksize ∙))
-    -- to (rightZero ω ∙)        = inj (# 1) (# 3) (inj* (ksize ω) (ksize ∙))
-    -- to (* distributesOverˡ +) = inj (# 2) (# 0) (inj* (ksize *) (ksize +))
-    -- to (* distributesOverʳ +) = inj (# 2) (# 1) (inj* (ksize *) (ksize +))
-
-    -- bij₁ : Σ (Fin 3) (λ i → Fin (Pieces.totalSize (Pieces.pieceAt pieces i))) ↔ Fin N
-    -- bij₁ = asPiece pieces
-
-    -- bij₂ : Σ (Fin 3) (λ i →
-    --                      Σ (Fin (Pieces.numPieces (Pieces.pieceAt pieces i)))
-    --                      (Fin ∘ Pieces.sizeAt (Pieces.pieceAt pieces i))) ↔ Fin N
-    -- bij₂ = asPiece² pieces
-
-
-module _ {k′} {F : Set k′ → Set k′} (applicative : RawApplicative F) where
-  open RawApplicative applicative
-
-  traverseProperty : ∀ {k} {K : ℕ → Set k} {K′ : ℕ → Set k′} → (∀ {n} → K n → F (K′ n)) → Property K → F (Property K′)
-  traverseProperty f (associative ∙)        = pure associative ⊛ f ∙
-  traverseProperty f (commutative ∙)        = pure commutative ⊛ f ∙
-  traverseProperty f (idempotent ∙)         = pure idempotent ⊛ f ∙
-  traverseProperty f (selective ∙)          = pure selective ⊛ f ∙
-  traverseProperty f (cancellative ∙)       = pure cancellative ⊛ f ∙
-  traverseProperty f (leftIdentity ε ∙)     = pure leftIdentity ⊛ f ε ⊛ f ∙
-  traverseProperty f (rightIdentity ε ∙)    = pure rightIdentity ⊛ f ε ⊛ f ∙
-  traverseProperty f (leftZero ω ∙)         = pure leftZero ⊛ f ω ⊛ f ∙
-  traverseProperty f (rightZero ω ∙)        = pure rightZero ⊛ f ω ⊛ f ∙
-  traverseProperty f (* distributesOverˡ +) = pure _distributesOverˡ_ ⊛ f * ⊛ f +
-  traverseProperty f (* distributesOverʳ +) = pure _distributesOverʳ_ ⊛ f * ⊛ f +
-
--- mapProperty : ∀ {k k′} {K : ℕ → Set k} {K′ : ℕ → Set k′} → (∀ {n} → K n → K′ n) → Property K → Property K′
+opArities : Property → List ℕ
+opArities associative      = 2 ∷ []
+opArities commutative      = 2 ∷ []
+opArities idempotent       = 2 ∷ []
+opArities selective        = 2 ∷ []
+opArities cancellative     = 2 ∷ []
+opArities leftIdentity     = 0 ∷ 2 ∷ []
+opArities rightIdentity    = 0 ∷ 2 ∷ []
+opArities leftZero         = 0 ∷ 2 ∷ []
+opArities rightZero        = 0 ∷ 2 ∷ []
+opArities distributesOverˡ = 2 ∷ 2 ∷ []
+opArities distributesOverʳ = 2 ∷ 2 ∷ []
 
 module _ {c ℓ k} {K : ℕ → Set k} (rawStruct : RawStruct c ℓ K) where
   open RawStruct rawStruct
   open Algebra.FunctionProperties _≈_
 
-  interpret : Property K → Set (c ⊔ˡ ℓ)
-  interpret (associative ∙) = Associative ⟦ ∙ ⟧
-  interpret (commutative ∙) = Commutative ⟦ ∙ ⟧
-  interpret (idempotent ∙) = Idempotent ⟦ ∙ ⟧
-  interpret (selective ∙) = Selective ⟦ ∙ ⟧
-  interpret (cancellative ∙) = Cancellative ⟦ ∙ ⟧
-  interpret (leftIdentity ε ∙) = LeftIdentity ⟦ ε ⟧ ⟦ ∙ ⟧
-  interpret (rightIdentity ε ∙) = RightIdentity ⟦ ε ⟧ ⟦ ∙ ⟧
-  interpret (leftZero ω ∙) = LeftZero ⟦ ω ⟧ ⟦ ∙ ⟧
-  interpret (rightZero ω ∙) = RightZero ⟦ ω ⟧ ⟦ ∙ ⟧
-  interpret (* distributesOverˡ +) = ⟦ * ⟧ DistributesOverˡ ⟦ + ⟧
-  interpret (* distributesOverʳ +) = ⟦ * ⟧ DistributesOverʳ ⟦ + ⟧
+  interpret : (π : Property) → All K (opArities π) → Set (c ⊔ˡ ℓ)
+  interpret associative      (∙ ∷ [])     = Associative ⟦ ∙ ⟧
+  interpret commutative      (∙ ∷ [])     = Commutative ⟦ ∙ ⟧
+  interpret idempotent       (∙ ∷ [])     = Idempotent ⟦ ∙ ⟧
+  interpret selective        (∙ ∷ [])     = Selective ⟦ ∙ ⟧
+  interpret cancellative     (∙ ∷ [])     = Cancellative ⟦ ∙ ⟧
+  interpret leftIdentity     (ε ∷ ∙ ∷ []) = LeftIdentity ⟦ ε ⟧ ⟦ ∙ ⟧
+  interpret rightIdentity    (ε ∷ ∙ ∷ []) = RightIdentity ⟦ ε ⟧ ⟦ ∙ ⟧
+  interpret leftZero         (ω ∷ ∙ ∷ []) = LeftZero ⟦ ω ⟧ ⟦ ∙ ⟧
+  interpret rightZero        (ω ∷ ∙ ∷ []) = RightZero ⟦ ω ⟧ ⟦ ∙ ⟧
+  interpret distributesOverˡ (* ∷ + ∷ []) = ⟦ * ⟧ DistributesOverˡ ⟦ + ⟧
+  interpret distributesOverʳ (* ∷ + ∷ []) = ⟦ * ⟧ DistributesOverʳ ⟦ + ⟧
 
-⟦_⟧P : ∀ {c ℓ k} {K : ℕ → Set k} → Property K → RawStruct c ℓ K → Set (c ⊔ˡ ℓ)
-⟦ π ⟧P rawStruct = interpret rawStruct π
+⟦_⟧P : ∀ {c ℓ k} {K : ℕ → Set k} → ∃ (All K ∘ opArities) → RawStruct c ℓ K → Set (c ⊔ˡ ℓ)
+⟦ π , ops ⟧P rawStruct = interpret rawStruct π ops
+
+-- TODO: Automate with reflection
+allProperties : List Property
+allProperties
+  = associative
+  ∷ commutative
+  ∷ idempotent
+  ∷ selective
+  ∷ cancellative
+  ∷ leftIdentity
+  ∷ rightIdentity
+  ∷ leftZero
+  ∷ rightZero
+  ∷ distributesOverʳ
+  ∷ distributesOverˡ
+  ∷ []
 
 --------------------------------------------------------------------------------
 --  Subsets of properties over a particular operator code type
 --------------------------------------------------------------------------------
 
--- record Code k : Set (sucˡ k) where
---   field
---     K : ℕ → Set k
---     countAtArity : ℕ → ℕ
---     injAtArity : ∀ n → K n ↣ Fin (countAtArity n)
+record Code k : Set (sucˡ k) where
+  field
+    K : ℕ → Set k
+    boundAt : ℕ → ℕ
+    isFiniteAt : ∀ n → IsFiniteSet {A = K n} _≡_ (boundAt n)
 
---   Property′ = Property K
+  Property′ = ∃ (All K ∘ opArities)
 
---   -- TODO: Automate this with reflection. Also proofs of completeness.
---   allProperties : List Property′
---   allProperties =
---     let open List
+  module _ n where
+    open IsFiniteSet (isFiniteAt n) public
 
---         p2 : K 2 → List Property′
---         p2 ∙
---           = associative ∙
---           ∷ commutative ∙
---           ∷ idempotent ∙
---           ∷ selective ∙
---           ∷ cancellative ∙
---           ∷ []
---         p02 : K 0 → K 2 → List Property′
---         p02 α ∙
---           = leftIdentity α ∙
---           ∷ rightIdentity α ∙
---           ∷ leftZero α ∙
---           ∷ rightZero α ∙
---           ∷ []
---         p22 : K 2 → K 2 → List Property′
---         p22 + *
---           = * distributesOverˡ +
---           ∷ * distributesOverʳ +
---           ∷ []
+  appPropertyToAll : (π : Property) → List (All K (opArities π))
+  appPropertyToAll π = All.transpose (All.tabulate {xs = opArities π} (λ {n} _ → enumerate n))
 
---         all0 : List (K 0)
---         all0 = {!!}
+  allAppliedProperties : List Property′
+  allAppliedProperties = List.concatMap (λ π → List.map (λ xs → π , xs) (appPropertyToAll π)) allProperties
 
---         all2 : List (K 2)
---         all2 = {!!}
---     in   concatMap (λ ∙ →
---        p2 ∙
---          ++ concatMap (λ α →
---        p02 α ∙
---          ) all0) all2 ++
---          concatMap (λ + → concatMap (λ * →
---        p22 + *
---          ) all2) all2
+open Bool
 
--- open Code using (Property′)
+record Properties {k} (code : Code k) : Set k where
+  constructor properties
 
--- open Bool
+  open Code code
 
--- record Properties {k} (code : Code k) : Set k where
---   constructor properties
+  field
+    hasProperty : Property′ → Bool
 
---   open Code code
+  HasProperty : Property′ → Set
+  HasProperty = T ∘ hasProperty
 
---   field
---     hasProperty : Property K → Bool
+  hasAll : Bool
+  hasAll = List.foldr (λ π b → hasProperty π ∧ b) true allAppliedProperties
 
---   HasProperty : Property K → Set
---   HasProperty π = T (hasProperty π)
+  HasAll : Set
+  HasAll = T hasAll
 
---   hasAll : Bool
---   hasAll = List.foldr (λ π → hasProperty π ∧_) true allProperties
+open Properties public
+open Code using (Property′) public
 
---   HasAll : Set
---   HasAll = T hasAll
+_∈ₚ_ : ∀ {k} {code : Code k} → Property′ code → Properties code → Set
+π ∈ₚ Π = HasProperty Π π
 
--- open Properties public
-
--- _∈ₚ_ : ∀ {k} {code : Code k} → Property′ code → Properties code → Set
--- π ∈ₚ Π = HasProperty Π π
-
--- _⇒ₚ_ : ∀ {k} {code : Code k} → Properties code → Properties code → Properties code
--- hasProperty (Π₁ ⇒ₚ Π₂) π = not (hasProperty Π₁ π) ∨ hasProperty Π₂ π
+_⇒ₚ_ : ∀ {k} {code : Code k} → Properties code → Properties code → Properties code
+hasProperty (Π₁ ⇒ₚ Π₂) π = not (hasProperty Π₁ π) ∨ hasProperty Π₂ π
 
 
--- -- Has⇒ₚ : ∀ {k} {code : Code k} {Π Π′ : Properties code} {π : Property (Code.K code)} → π ∈ₚ Π′ → HasAll (Π′ ⇒ₚ Π) → π ∈ₚ Π
--- -- Has⇒ₚ {Π = Π} {Π′} {π} hasπ hasΠ′ with hasProperty Π π | hasAll 
--- -- Has⇒ₚ hasπ hasΠ′ = {!hasΠ′!}
+-- Has⇒ₚ : ∀ {k} {code : Code k} {Π Π′ : Properties code} {π : Property′ code} → π ∈ₚ Π′ → HasAll (Π′ ⇒ₚ Π) → π ∈ₚ Π
+-- Has⇒ₚ {Π = Π} {Π′} {π} hasπ hasΠ′ with hasProperty Π π | hasAll
+-- Has⇒ₚ hasπ hasΠ′ | h1 | h2 = {!!}
 
--- instance
---   truth : ⊤
---   truth = tt
+--------------------------------------------------------------------------------
+--  Structures with additional properties
+--------------------------------------------------------------------------------
 
---   -- T-HasProperty : ∀ {k} {K : ℕ → Set k} {Π : Properties K} {π} ⦃ isTrue : T (hasProperty Π π) ⦄ → π ∈ₚ Π
---   -- T-HasProperty {Π = Π} {π} ⦃ isTrue ⦄ with hasProperty Π π
---   -- T-HasProperty {Π = _} {_} ⦃ () ⦄ | false
---   -- T-HasProperty {Π = _} {_} ⦃ tt ⦄ | true = tt
+record Struct c ℓ {k} {code : Code k} (Π : Properties code) : Set (sucˡ (c ⊔ˡ ℓ ⊔ˡ k)) where
+  open Code code hiding (Property′)
 
--- --------------------------------------------------------------------------------
--- --  Structures with additional properties
--- --------------------------------------------------------------------------------
+  field
+    rawStruct : RawStruct c ℓ K
+    Π-hold : ∀ {π} → π ∈ₚ Π → ⟦ π ⟧P rawStruct
 
--- record Struct c ℓ {k} {code : Code k} (Π : Properties code) : Set (sucˡ (c ⊔ˡ ℓ ⊔ˡ k)) where
---   open Code code
+  open RawStruct rawStruct public
 
---   field
---     rawStruct : RawStruct c ℓ K
---     Π-hold : ∀ {π} → π ∈ₚ Π → ⟦ π ⟧P rawStruct
+  has : Property′ code → Set
+  has π = π ∈ₚ Π
 
---   open RawStruct rawStruct public
+  has′ : Properties code → Set
+  has′ Π′ = HasAll (Π ⇒ₚ Π′)
 
---   has : Property K → Set
---   has π = π ∈ₚ Π
+  use : (π : Property′ code) {hasπ : has π} → ⟦ π ⟧P rawStruct
+  use π {hasπ} = Π-hold hasπ
 
---   has′ : Properties code → Set
---   has′ Π′ = HasAll (Π ⇒ₚ Π′)
+  -- from : (Π′ : Properties code) (π : Property′ code) {hasπ : π ∈ₚ Π′} {hasΠ′ : has′ Π′} → ⟦ π ⟧P rawStruct
+  -- from Π′ π {hasπ} {hasΠ′} = use π {{!!}}
 
---   use : (π : Property K) ⦃ hasπ : has π ⦄ → ⟦ π ⟧P rawStruct
---   use π ⦃ hasπ ⦄ = Π-hold hasπ
+--------------------------------------------------------------------------------
+--  Some named property combinations
+--------------------------------------------------------------------------------
 
---   -- from : (Π′ : Properties code) (π : Property K) ⦃ hasπ : π ∈ₚ Π′ ⦄ ⦃ hasΠ′ : has′ Π′ ⦄ → ⟦ π ⟧P rawStruct
---   -- from Π′ π ⦃ hasπ ⦄ ⦃ hasΠ′ ⦄ = use π ⦃ {!!} ⦄
+private
+  Maybe-applicative : ∀ {ℓ} → RawApplicative {ℓ} Maybe
+  Maybe-applicative = record
+    { pure = just
+    ; _⊛_ = maybe Maybe.map λ _ → nothing
+    }
 
--- --------------------------------------------------------------------------------
--- --  Some named property combinations
--- --------------------------------------------------------------------------------
+subΠ : ∀ {k k′} {code : Code k} {code′ : Code k′} →
+  let open Code code using (K)
+      open Code code′ using () renaming (K to K′)
+  in (∀ {n} → K′ n → Maybe (K n)) →
+     Properties code → Properties code′ → Properties code′
+hasProperty (subΠ f Π₀ Π₁) π = {!!}
 
--- private
---   Maybe-applicative : ∀ {ℓ} → RawApplicative {ℓ} Maybe
---   Maybe-applicative = record
---     { pure = just
---     ; _⊛_ = maybe Maybe.map λ _ → nothing
---     }
+data MagmaK : ℕ → Set where
+  ∙ : MagmaK 2
 
--- subΠ : ∀ {k k′} {code : Code k} {code′ : Code k′} →
---   let open Code code using (K)
---       open Code code′ using () renaming (K to K′)
---   in (∀ {n} → K′ n → Maybe (K n)) →
---      Properties code → Properties code′ → Properties code′
--- hasProperty (subΠ f Π₀ Π₁) π with traverseProperty Maybe-applicative f π
--- hasProperty (subΠ f Π₀ Π₁) π | just π′ = hasProperty Π₀ π′
--- hasProperty (subΠ f Π₀ Π₁) π | nothing = hasProperty Π₁ π
+data MonoidK : ℕ → Set where
+  ε : MonoidK 0
+  ∙ : MonoidK 2
 
--- data MagmaK : ℕ → Set where
---   ∙ : MagmaK 2
+data BimonoidK : ℕ → Set where
+  0# 1# : BimonoidK 0
+  + * : BimonoidK 2
 
--- data MonoidK : ℕ → Set where
---   ε : MonoidK 0
---   ∙ : MonoidK 2
+module _ where
+  open Code
+  open ℕ
 
--- data BimonoidK : ℕ → Set where
---   0# 1# : BimonoidK 0
---   + * : BimonoidK 2
+  magmaCode : Code _
+  K magmaCode = MagmaK
+  boundAt magmaCode 2 = 1
+  boundAt magmaCode _ = 0
+  isFiniteAt magmaCode 0 = empty-isFinite λ ()
+  isFiniteAt magmaCode 1 = empty-isFinite λ ()
+  isFiniteAt magmaCode (suc (suc (suc _))) = empty-isFinite λ ()
+  isFiniteAt magmaCode 2 = unitary-isFinite (≡.setoid _) ∙ λ {∙ → ≡.refl}
 
--- module _ where
---   open Code
---   open ℕ
-
---   magmaCode : Code _
---   K magmaCode = MagmaK
---   allAtArity magmaCode (suc (suc zero)) = ∙ ∷ []
---   allAtArity magmaCode _ = []
-
---   monoidCode : Code _
---   K monoidCode = MonoidK
---   allAtArity monoidCode zero = ε ∷ []
---   allAtArity monoidCode (suc (suc zero)) = ∙ ∷ []
---   allAtArity monoidCode _ = []
+  monoidCode : Code _
+  K monoidCode = MonoidK
+  boundAt monoidCode 0 = 1
+  boundAt monoidCode 2 = 1
+  boundAt monoidCode _ = 0
+  isFiniteAt monoidCode 0 = unitary-isFinite (≡.setoid _) ε λ {ε → ≡.refl}
+  isFiniteAt monoidCode 1 = empty-isFinite λ ()
+  isFiniteAt monoidCode 2 = unitary-isFinite (≡.setoid _) ∙ λ {∙ → ≡.refl}
+  isFiniteAt monoidCode (suc (suc (suc _))) = empty-isFinite λ ()
 
 --   bimonoidCode : Code _
 --   K bimonoidCode = BimonoidK
@@ -417,20 +304,20 @@ module _ {c ℓ k} {K : ℕ → Set k} (rawStruct : RawStruct c ℓ K) where
 --   allAtArity bimonoidCode (suc (suc zero)) = + ∷ * ∷ []
 --   allAtArity bimonoidCode _ = []
 
--- +-part : ∀ {n} → BimonoidK n → Maybe (MonoidK n)
--- +-part 0# = just ε
--- +-part + = just ∙
--- +-part _ = nothing
++-part : ∀ {n} → BimonoidK n → Maybe (MonoidK n)
++-part 0# = just ε
++-part + = just ∙
++-part _ = nothing
 
--- *-part : ∀ {n} → BimonoidK n → Maybe (MonoidK n)
--- *-part 1# = just ε
--- *-part * = just ∙
--- *-part _ = nothing
+*-part : ∀ {n} → BimonoidK n → Maybe (MonoidK n)
+*-part 1# = just ε
+*-part * = just ∙
+*-part _ = nothing
 
--- isSemigroup : Properties magmaCode
--- isSemigroup = properties
---   λ { (associative ∙) → true
---     ; _ → false}
+isSemigroup : Properties magmaCode
+isSemigroup = properties
+  λ { (associative , ∙ ∷ []) → true
+    ; _ → false}
 
 -- isMonoid : Properties monoidCode
 -- isMonoid = subΠ (λ {∙ → just ∙; _ → nothing}) isSemigroup (properties
