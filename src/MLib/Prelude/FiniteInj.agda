@@ -164,3 +164,14 @@ record PointwiseFiniteSet {a} (A : Set a) c ℓ : Set (a ⊔ˡ sucˡ (c ⊔ˡ �
 
   module _ x where
     open IsFiniteSet (finiteAt x) public
+
+-- data TableAny {a p} {A : Set a} (P : A → Set p) : ∀ {n} → Table A n → Set p where
+--   here : ∀ {x} → P x → TableAny P {1} (replicate x)
+
+-- module _ {c} {ℓ} (F : FiniteSet c ℓ) where
+--   open FiniteSet F
+
+--   Sum : ∀ {a} {A : Set a} → (Carrier → A) → Set ?
+--   Sum f = Any ? enumerate
+
+-- finiteProduct : 
