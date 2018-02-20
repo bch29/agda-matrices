@@ -142,7 +142,7 @@ module _ {a} {A : Set a} {size : A → ℕ} (P₁ : Pieces² A size) where
 constPieces : ℕ → ℕ → Pieces ℕ id
 constPieces numPieces pieceSize = record
   { numPieces = numPieces
-  ; pieces = pure pieceSize
+  ; pieces = replicate pieceSize
   }
 
 {-

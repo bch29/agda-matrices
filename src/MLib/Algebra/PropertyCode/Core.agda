@@ -27,7 +27,6 @@ open import Function.Inverse using (_↔_)
 open import Function.LeftInverse using (_↞_; LeftInverse)
 open import Function.Equality using (_⟨$⟩_)
 
--- import Data.Table as Table hiding (module Table)
 open Table using (Table)
 
 
@@ -42,6 +41,7 @@ data Property : Set where
     distributesOverˡ distributesOverʳ
     : Property
 
+
 opArities : Property → List ℕ
 opArities associative      = 2 ∷ []
 opArities commutative      = 2 ∷ []
@@ -54,6 +54,7 @@ opArities leftZero         = 0 ∷ 2 ∷ []
 opArities rightZero        = 0 ∷ 2 ∷ []
 opArities distributesOverˡ = 2 ∷ 2 ∷ []
 opArities distributesOverʳ = 2 ∷ 2 ∷ []
+
 
 module _ {c ℓ k} {K : ℕ → Set k} (rawStruct : RawStruct c ℓ K) where
   open RawStruct rawStruct
@@ -72,11 +73,13 @@ module _ {c ℓ k} {K : ℕ → Set k} (rawStruct : RawStruct c ℓ K) where
   interpret distributesOverˡ (* ∷ + ∷ []) = ⟦ * ⟧ DistributesOverˡ ⟦ + ⟧
   interpret distributesOverʳ (* ∷ + ∷ []) = ⟦ * ⟧ DistributesOverʳ ⟦ + ⟧
 
+
 ⟦_⟧P : ∀ {c ℓ k} {K : ℕ → Set k} → ∃ (All K ∘ opArities) → RawStruct c ℓ K → Set (c ⊔ˡ ℓ)
 ⟦ π , ops ⟧P rawStruct = interpret rawStruct π ops
 
-finiteProperty : IsFiniteSet {A = Property} _≡_ _
-finiteProperty = record
+
+Property-IsFiniteSet : IsFiniteSet {A = Property} _≡_ _
+Property-IsFiniteSet = record
   { isEquivalence = ≡.isEquivalence
   ; ontoFin = record
     { to = ≡.→-to-⟶ to
@@ -129,6 +132,11 @@ finiteProperty = record
     left-inverse-of distributesOverˡ = ≡.refl
     left-inverse-of distributesOverʳ = ≡.refl
 
+
+finiteProperty : FiniteSet _ _
+finiteProperty = record { isFiniteSet = Property-IsFiniteSet }
+
+
 -- TODO: Automate with reflection
 allProperties : List Property
 allProperties
@@ -155,18 +163,18 @@ record Code k : Set (sucˡ k) where
     boundAt : ℕ → ℕ
     isFiniteAt : ∀ n → IsFiniteSet {A = K n} _≡_ (boundAt n)
 
-  Property′ = ∃ (All K ∘ opArities)
+  Property′ = Σₜ finiteProperty (All K ∘ opArities)
 
-  module _ n where
-    open IsFiniteSet (isFiniteAt n) public
-
-  appPropertyToAll : (π : Property) → List (All K (opArities π))
-  appPropertyToAll π = All.transpose (All.tabulate {xs = opArities π} (λ {n} _ → enumerate n))
+  Property′-IsFiniteSet : IsFiniteSet {A = Property′} _≡_ _
+  Property′-IsFiniteSet =
+    Σₜ-isFiniteSet Property-IsFiniteSet (λ {x} → finiteAll {P = K} {boundAt} (isFiniteAt _) {opArities x})
 
   allAppliedProperties : List Property′
-  allAppliedProperties = List.concatMap (λ π → List.map (λ xs → π , xs) (appPropertyToAll π)) allProperties
+  allAppliedProperties = IsFiniteSet.enumerate Property′-IsFiniteSet
+
 
 open Bool
+
 
 record Properties {k} (code : Code k) : Set k where
   constructor properties
