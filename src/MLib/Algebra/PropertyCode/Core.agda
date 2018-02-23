@@ -2,7 +2,7 @@ module MLib.Algebra.PropertyCode.Core where
 
 open import MLib.Prelude
 open import MLib.Prelude.Fin.Pieces
-open import MLib.Prelude.FiniteInj
+open import MLib.Prelude.Finite
 open import MLib.Algebra.PropertyCode.RawStruct
 open import MLib.Algebra.Instances
 
@@ -78,10 +78,9 @@ module _ {c ℓ k} {K : ℕ → Set k} (rawStruct : RawStruct c ℓ K) where
 ⟦ π , ops ⟧P rawStruct = interpret rawStruct π ops
 
 
-Property-IsFiniteSet : IsFiniteSet {A = Property} _≡_ _
+Property-IsFiniteSet : IsFiniteSet Property _
 Property-IsFiniteSet = record
-  { isEquivalence = ≡.isEquivalence
-  ; ontoFin = record
+  { ontoFin = record
     { to = ≡.→-to-⟶ to
     ; from = ≡.→-to-⟶ from
     ; left-inverse-of = left-inverse-of
@@ -134,7 +133,7 @@ Property-IsFiniteSet = record
 
 
 finiteProperty : FiniteSet _ _
-finiteProperty = record { isFiniteSet = Property-IsFiniteSet }
+finiteProperty = record { isFiniteSetoid = Property-IsFiniteSet }
 
 
 -- TODO: Automate with reflection
@@ -161,16 +160,16 @@ record Code k : Set (sucˡ k) where
   field
     K : ℕ → Set k
     boundAt : ℕ → ℕ
-    isFiniteAt : ∀ n → IsFiniteSet {A = K n} _≡_ (boundAt n)
+    isFiniteAt : ∀ n → IsFiniteSet (K n) (boundAt n)
 
-  Property′ = Σₜ finiteProperty (All K ∘ opArities)
+  Property′ = Σᶠ finiteProperty (All K ∘ opArities)
 
-  Property′-IsFiniteSet : IsFiniteSet {A = Property′} _≡_ _
+  Property′-IsFiniteSet : IsFiniteSet Property′ _
   Property′-IsFiniteSet =
-    Σₜ-isFiniteSet Property-IsFiniteSet (λ {x} → finiteAll {P = K} {boundAt} (isFiniteAt _) {opArities x})
+    Σₜ-isFiniteSet Property-IsFiniteSet (finiteAll boundAt isFiniteAt ∘ opArities)
 
   allAppliedProperties : List Property′
-  allAppliedProperties = IsFiniteSet.enumerate Property′-IsFiniteSet
+  allAppliedProperties = IsFiniteSetoid.enumerate Property′-IsFiniteSet
 
 
 open Bool
@@ -196,13 +195,22 @@ record Properties {k} (code : Code k) : Set k where
 open Properties public
 open Code using (Property′) public
 
+-- singleton : ∀ {k} {code : Code k} → Property′ code → Properties code
+-- singleton π = properties {!!}
+
 _∈ₚ_ : ∀ {k} {code : Code k} → Property′ code → Properties code → Set
 π ∈ₚ Π = HasProperty Π π
 
 _⇒ₚ_ : ∀ {k} {code : Code k} → Properties code → Properties code → Properties code
 hasProperty (Π₁ ⇒ₚ Π₂) π = not (hasProperty Π₁ π) ∨ hasProperty Π₂ π
 
+⇒ₚ-β : ∀ {k} {code : Code k} {Π₁ Π₂ : Properties code} → HasAll (Π₁ ⇒ₚ Π₂) → HasAll Π₁ → HasAll Π₂
+⇒ₚ-β has⇒ hasΠ₁ = {!!}
 
-Has⇒ₚ : ∀ {k} {code : Code k} {Π Π′ : Properties code} {π : Property′ code} → π ∈ₚ Π′ → HasAll (Π′ ⇒ₚ Π) → π ∈ₚ Π
-Has⇒ₚ {Π = Π} {Π′} {π} hasπ hasΠ′ = {!!}
+⇒ₚ-trans : ∀ {k} {code : Code k} {Π₁ Π₂ Π₃ : Properties code} → HasAll (Π₁ ⇒ₚ Π₂) → HasAll (Π₂ ⇒ₚ Π₃) → HasAll (Π₁ ⇒ₚ Π₃)
+⇒ₚ-trans = {!!}
+
+
+-- Has⇒ₚ : ∀ {k} {code : Code k} {Π Π′ : Properties code} {π : Property′ code} → π ∈ₚ Π′ → HasAll (Π′ ⇒ₚ Π) → π ∈ₚ Π
+-- Has⇒ₚ {Π = Π} {Π′} {π} hasπ has⇒ = ⇒ₚ-eval {Π₂ = singleton π} {!!} has⇒
 

@@ -2,116 +2,261 @@ module MLib.Prelude.Finite where
 
 open import MLib.Prelude.FromStdlib
 import MLib.Prelude.Fin as Fin
+import MLib.Prelude.Fin.Pieces as P
 open Fin using (Fin)
 
-open Algebra using (Monoid)
-
-import Data.List.Any as Any
+open import Data.List.All as All using (All; []; _∷_) hiding (module All)
+open import Data.List.Any as Any using (Any; here; there) hiding (module Any)
 import Data.List.Any.Membership as Membership
+import Data.List.Any.Membership.Propositional as PropMembership
 
-module _ {c p} (setoid : Setoid c p) where
-  module S = Setoid setoid
-  open S using (_≈_) renaming (Carrier to S)
-  open List
+module Table where
+  open import Data.Table public
+  open import Data.Table.Properties public
+open Table using (Table; tabulate; lookup) hiding (module Table)
 
-  data _⊜_ : (xs ys : List S) → Set p where
-    []-cong : [] ⊜ []
-    ∷-cong : ∀ {x y xs ys} → x ≈ y → xs ⊜ ys → (x ∷ xs) ⊜ (y ∷ ys)
+open import Function.LeftInverse using (LeftInverse; _↞_) renaming (_∘_ to _ⁱ∘_)
+open import Function.Inverse using (Inverse; _↔_)
+open import Function.Equality as FE using (_⟶_; _⟨$⟩_; cong)
+open import Function.Related using () renaming (module EquationalReasoning to RelReasoning)
 
-  module Props where
-    refl : Reflexive _⊜_
-    refl {[]} = []-cong
-    refl {x ∷ xs} = ∷-cong S.refl refl
+open Algebra using (IdempotentCommutativeMonoid)
 
-    sym : Symmetric _⊜_
-    sym []-cong = []-cong
-    sym (∷-cong p q) = ∷-cong (S.sym p) (sym q)
+--------------------------------------------------------------------------------
+--  Main Definition
+--------------------------------------------------------------------------------
 
-    trans : Transitive _⊜_
-    trans []-cong []-cong = []-cong
-    trans (∷-cong p₁ p₂) (∷-cong q₁ q₂) = ∷-cong (S.trans p₁ q₁) (trans p₂ q₂)
+record IsFiniteSetoid {c ℓ} (setoid : Setoid c ℓ) (N : ℕ) : Set (c ⊔ˡ ℓ) where
+  open Setoid setoid public
+  open Setoid setoid using () renaming (Carrier to A)
 
-    isEquivalence : IsEquivalence _⊜_
-    isEquivalence = record
-      { refl = refl
-      ; sym = sym
-      ; trans = trans
-      }
+  OntoFin : ℕ → Set _
+  OntoFin N = LeftInverse setoid (≡.setoid (Fin N))
 
-    assoc : ∀ xs ys zs → ((xs ++ ys) ++ zs) ⊜ (xs ++ (ys ++ zs))
-    assoc [] ys zs = refl
-    assoc (x ∷ xs) ys zs = ∷-cong S.refl (assoc xs ys zs)
+  field
+    ontoFin : OntoFin N
 
-    ∙-cong : ∀ {xs xs′ ys ys′} → xs ⊜ xs′ → ys ⊜ ys′ → (xs ++ ys) ⊜ (xs′ ++ ys′)
-    ∙-cong []-cong q = q
-    ∙-cong (∷-cong p q) r = ∷-cong p (∙-cong q r)
+  enumTable : Table A N
+  enumTable = tabulate (LeftInverse.from ontoFin ⟨$⟩_)
 
-    rightId : ∀ xs → (xs ++ []) ⊜ xs
-    rightId [] = []-cong
-    rightId (x ∷ xs) = ∷-cong S.refl (rightId xs)
+  enumerate : List A
+  enumerate = Table.toList enumTable
 
-  List-monoid : Monoid c p
-  List-monoid = record
-    { Carrier = List S
-    ; _≈_ = _⊜_
-    ; _∙_ = _++_
-    ; ε = List.[]
-    ; isMonoid = record
-      { isSemigroup = record { Props }
-      ; identity = (λ _ → Props.refl) , Props.rightId
+
+IsFiniteSet : ∀ {a} → Set a → ℕ → Set a
+IsFiniteSet = IsFiniteSetoid ∘ ≡.setoid
+
+
+record FiniteSet c ℓ : Set (sucˡ (c ⊔ˡ ℓ)) where
+  field
+    setoid : Setoid c ℓ
+    N : ℕ
+    isFiniteSetoid : IsFiniteSetoid setoid N
+
+  open IsFiniteSetoid isFiniteSetoid public
+
+--------------------------------------------------------------------------------
+--  Combinators
+--------------------------------------------------------------------------------
+
+emptySetoid : ∀ {a} {A : Set a} → ¬ A → Setoid a a
+emptySetoid {A = A} ¬A = record
+  { _≈_ = ⊥-elim ∘ ¬A
+  ; isEquivalence = record
+    { refl = λ {x} → ⊥-elim (¬A x)
+    ; sym = λ {x} → ⊥-elim (¬A x)
+    ; trans = λ {x} → ⊥-elim (¬A x)
+    }
+  }
+
+-- An empty set is finite
+
+empty-isFinite : ∀ {a} {A : Set a} (¬A : ¬ A) → IsFiniteSetoid (emptySetoid ¬A) 0
+empty-isFinite ¬A = record
+  { ontoFin = record
+    { to = record { _⟨$⟩_ = ⊥-elim ∘ ¬A ; cong = λ {x} → ⊥-elim (¬A x) }
+    ; from = record { _⟨$⟩_ = λ () ; cong = λ {i} → ⊥-elim (nofin0 i) }
+    ; left-inverse-of = ⊥-elim ∘ ¬A
+    }
+  }
+  where
+    nofin0 : ¬ Fin 0
+    nofin0 ()
+
+-- A set with a single member is finite
+
+unitary-isFinite : ∀ {c ℓ} (setoid : Setoid c ℓ) →
+  let open Setoid setoid
+  in ∀ x → (∀ y → x ≈ y) → IsFiniteSetoid setoid 1
+unitary-isFinite setoid x unique = record
+  { ontoFin = record
+    { to = FE.const Fin.zero
+    ; from = FE.const x
+    ; left-inverse-of = unique
+    }
+  }
+  where open Setoid setoid
+
+
+-- An enumerable setoid is finite
+
+module _ {c ℓ} (setoid : Setoid c ℓ) where
+  open Setoid setoid
+  open Membership setoid
+
+  Any-cong : ∀ {xs} → (∀ x → x ∈ xs) → Set _
+  Any-cong f = ∀ {x y} → x ≈ y → Any.index (f x) ≡ Any.index (f y)
+
+  private
+    from : ∀ xs → Fin (List.length xs) → Carrier
+    from List.[] ()
+    from (x List.∷ xs) Fin.zero = x
+    from (x List.∷ xs) (Fin.suc i) = from xs i
+
+    left-inverse-of : ∀ {xs} (f : ∀ x → x ∈ xs) x → from xs (Any.index (f x)) ≈ x
+    left-inverse-of f x = go (f x)
+      where
+      go : ∀ {xs} (p : x ∈ xs) → from xs (Any.index p) ≈ x
+      go (here px) = sym px
+      go (there p) = go p
+
+  enumerable-isFiniteSetoid : ∀ {xs} (f : ∀ x → x ∈ xs) → Any-cong f → IsFiniteSetoid setoid (List.length xs)
+  enumerable-isFiniteSetoid {xs} f f-cong = record
+    { ontoFin = record
+      { to = record
+        { _⟨$⟩_ = Any.index ∘ f
+        ; cong = f-cong
+        }
+      ; from = ≡.→-to-⟶ (from xs)
+      ; left-inverse-of = left-inverse-of f
       }
     }
 
-module MonoidOps {c p} (monoid : Monoid c p) where
-  open Monoid monoid renaming (Carrier to M)
 
-  module _ {ℓ} (F : Set ℓ) where
-    Enumerate : Set (ℓ ⊔ˡ c)
-    Enumerate = (F → M) → M
+-- As a special case of the previous theorem requiring fewer conditions, an
+-- enumerable set is finite.
 
-record Finite {c p} (F-setoid : Setoid c p) : Set (sucˡ (c ⊔ˡ p)) where
-  open Setoid F-setoid renaming (Carrier to F)
-  open Membership F-setoid
-  open MonoidOps
-  open List
+module _ {a} {A : Set a} where
+  open PropMembership
 
-  field
-    enumerate : (monoid : Monoid c p) → Enumerate monoid F
-    enum-exhaustive : ∀ {x} → x ∈ enumerate (List-monoid F-setoid) [_]
-    enum-unique : ∀ {x} → (p q : x ∈ enumerate (List-monoid F-setoid) [_]) → p ≡ q
+  enumerable-isFiniteSet : ∀ {a} {A : Set a} {xs : List A} (f : ∀ x → x ∈ xs) → IsFiniteSet A (List.length xs)
+  enumerable-isFiniteSet f = enumerable-isFiniteSetoid (≡.setoid _) f (≡.cong (Any.index ∘ f))
 
-module _ where
-  open List
 
-  module _ {n} where
-    open Membership (≡.setoid (Fin n)) public
+-- Given a function with a left inverse from some 'A' to a finite set, 'A' must also be finite.
 
-    module _ (monoid : Monoid zeroˡ zeroˡ) where
-      open Monoid monoid renaming (Carrier to M)
+extendFinite : ∀ {c ℓ c′ ℓ′} {S : Setoid c′ ℓ′} (F : FiniteSet c ℓ) → LeftInverse S (FiniteSet.setoid F) → IsFiniteSetoid S (FiniteSet.N F)
+extendFinite finiteSet ontoF = record
+  { ontoFin = ontoFin ⁱ∘ ontoF
+  }
+  where
+    open FiniteSet finiteSet using (ontoFin)
 
-      enumerate : MonoidOps.Enumerate monoid (Fin n)
-      enumerate = Fin.foldMap ε _∙_
 
-  enum-exhaustive′ : ∀ {m n} {i} (f : Fin m → Fin n) → f i ∈ enumerate (List-monoid (≡.setoid (Fin n))) ([_] ∘ f)
-  enum-exhaustive′ {i = Fin.zero} f = Any.here ≡.refl
-  enum-exhaustive′ {i = Fin.suc i} f = Any.there (enum-exhaustive′ (f ∘ Fin.suc))
+-- Sum over a finite set
 
-  enum-exhaustive : ∀ {n} {i} → i ∈ enumerate (List-monoid (≡.setoid (Fin n))) [_]
-  enum-exhaustive = enum-exhaustive′ id
+module _ {c} {ℓ} (F : FiniteSet c ℓ) where
+  open FiniteSet F
 
-  0∉suc : ∀ {m n} (f : Fin m → Fin n) → ¬ Fin.zero ∈ Fin.foldUpto m [] (λ i is → Fin.suc (f i) ∷ is)
-  0∉suc {ℕ.zero} _ ()
-  0∉suc {ℕ.suc n} _ (Any.here ())
-  0∉suc {ℕ.suc n} f (Any.there z∈suc) = 0∉suc (f ∘ Fin.suc) z∈suc
+  Σᶠ : ∀ {p} → (Carrier → Set p) → Set p
+  Σᶠ P = ∃ (P ∘ lookup enumTable)
 
-  enum-unique′ : ∀ {m n} (f : Fin m → Fin n) {i} → (p q : i ∈ enumerate (List-monoid (≡.setoid (Fin n))) ([_] ∘ f)) → p ≡ q
-  enum-unique′ {ℕ.zero} _ ()
-  enum-unique′ {ℕ.suc n} _ (Any.here ≡.refl) (Any.here ≡.refl) = ≡.refl
-  enum-unique′ {ℕ.suc n} f (Any.here ≡.refl) (Any.there q) = {!!}
-  enum-unique′ {ℕ.suc n} f (Any.there p) (Any.here ≡.refl) = {!!}
-  enum-unique′ {ℕ.suc n} f (Any.there p) (Any.there q) = {!!}
 
-  -- enum-unique : ∀ {n} {x} → (p q : x ∈ enumerate (List-monoid (≡.setoid (Fin n))) [_]) → p ≡ q
+-- Given a family of finite sets, indexed by a finite set, the sum over the entire family is finite.
 
-    -- Fin-Finite : Finite (≡.setoid (Fin n))
-    -- Fin-Finite = record { enumerate = enumerate ; enum-exhaustive = {!!} ; enum-unique = {!!} }
+module _ {a} {A : Set a} {N} (F : IsFiniteSetoid (≡.setoid A) N) where
+  private
+    finiteSet : FiniteSet _ _
+    finiteSet = record { isFiniteSetoid = F }
+
+    module F = FiniteSet finiteSet
+
+  module _ {p} {P : A → Set p} {boundAt : A → ℕ} (finiteAt : ∀ x → IsFiniteSet (P x) (boundAt x)) where
+    private
+      module PW x = IsFiniteSetoid (finiteAt x)
+
+      pieces : P.Pieces A boundAt
+      pieces = record
+        { numPieces = N
+        ; pieces = F.enumTable
+        }
+
+      open P.Pieces pieces hiding (pieces)
+
+    Σₜ-isFiniteSet : IsFiniteSet (Σᶠ finiteSet P) totalSize
+    Σₜ-isFiniteSet = record
+      { ontoFin =
+        Σᶠ finiteSet P              ∼⟨ intoCoords ⟩
+        Σ (Fin N) (Fin ∘ sizeAt)    ↔⟨ P.asPiece pieces ⟩
+        Fin totalSize               ∎
+      }
+      where
+        open RelReasoning
+
+        to : Σᶠ finiteSet P → Σ (Fin N) (Fin ∘ sizeAt)
+        to (_ , px) = _ , LeftInverse.to (PW.ontoFin _) ⟨$⟩ px
+
+        from : Σ (Fin N) (Fin ∘ sizeAt) → Σᶠ finiteSet P
+        from (i , j) = _ , (LeftInverse.from (PW.ontoFin _) ⟨$⟩ j)
+
+        left-inverse-of : ∀ x → from (to x) ≡ x
+        left-inverse-of (i , x) = ≡.cong (i ,_) (LeftInverse.left-inverse-of (PW.ontoFin _) x)
+
+        intoCoords : Σᶠ finiteSet P ↞ Σ (Fin N) (Fin ∘ sizeAt)
+        intoCoords = record
+          { to = ≡.→-to-⟶ to
+          ; from = ≡.→-to-⟶ from
+          ; left-inverse-of = left-inverse-of
+          }
+
+
+module _ {a p} {A : Set a} {P : A → Set p} (boundAt : A → ℕ) (finiteAt : ∀ x → IsFiniteSet (P x) (boundAt x)) where
+  private
+    module PW x = IsFiniteSetoid (finiteAt x)
+
+  finiteAllSize : List A → ℕ
+  finiteAllSize = List.product ∘ List.map boundAt
+
+  -- allPair : ∀ xs → All P xs ↔ ∃ (P ∘ Table.lookup (Table.fromList xs))
+  -- allPair = {!!}
+
+  finiteAll : (xs : List A) → IsFiniteSet (All P xs) _
+  finiteAll _ = record
+    { ontoFin = record
+      { to = ≡.→-to-⟶ to
+      ; from = ≡.→-to-⟶ from
+      ; left-inverse-of = left-inverse-of
+      }
+    }
+    where
+      prodIsSum : ∀ m n → m Nat.* n ≡ Table.foldr Nat._+_ 0 (Table.replicate {m} n)
+      prodIsSum ℕ.zero _ = ≡.refl
+      prodIsSum (ℕ.suc m) n = ≡.cong₂ Nat._+_ (≡.refl {x = n}) (prodIsSum m n)
+
+      splitProd : ∀ {m n} → Fin (m Nat.* n) → Fin m × Fin n
+      splitProd {m} {n} ij rewrite prodIsSum m n = Inverse.from (P.asPiece (P.constPieces m n )) ⟨$⟩ ij
+
+      joinProd : ∀ {m n} → Fin m × Fin n → Fin (m Nat.* n)
+      joinProd {m} {n} ij with Inverse.to (P.asPiece (P.constPieces m n )) ⟨$⟩ ij
+      joinProd {m} {n} ij | f rewrite prodIsSum m n = f
+
+      splitProd-joinProd : ∀ {m n} (ij : Fin m × Fin n) → splitProd (joinProd ij) ≡ ij
+      splitProd-joinProd {m} {n} ij rewrite prodIsSum m n = Inverse.left-inverse-of (P.asPiece (P.constPieces m n)) ij
+
+      to : ∀ {xs} → All P xs → Fin (finiteAllSize xs)
+      to [] = Fin.zero
+      to (_∷_ {x} {xs} px ap) = joinProd ((LeftInverse.to (PW.ontoFin _) ⟨$⟩ px) , to ap)
+
+      from : ∀ {xs} → Fin (finiteAllSize xs) → All P xs
+      from {List.[]} _ = []
+      from {x List.∷ xs} i =
+        (LeftInverse.from (PW.ontoFin _) ⟨$⟩ (proj₁ (splitProd i))) ∷
+        from {xs} (proj₂ (splitProd {boundAt x} i))
+
+      left-inverse-of : ∀ {xs} (ap : All P xs) → from (to ap) ≡ ap
+      left-inverse-of [] = ≡.refl
+      left-inverse-of (px ∷ ap)
+        rewrite splitProd-joinProd ((LeftInverse.to (PW.ontoFin _) ⟨$⟩ px) , to ap)
+              | LeftInverse.left-inverse-of (IsFiniteSetoid.ontoFin (finiteAt _)) px
+              | left-inverse-of ap
+              = ≡.refl
