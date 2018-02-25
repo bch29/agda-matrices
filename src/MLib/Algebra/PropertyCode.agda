@@ -1,53 +1,43 @@
 module MLib.Algebra.PropertyCode where
 
 open import MLib.Prelude
-open import MLib.Prelude.Fin.Pieces
-open import MLib.Prelude.FiniteInj
-open import MLib.Algebra.PropertyCode.RawStruct
-open import MLib.Algebra.PropertyCode.Core
+open import MLib.Prelude.Finite
 open import MLib.Algebra.Instances
+
+open import MLib.Algebra.PropertyCode.RawStruct public
+open import MLib.Algebra.PropertyCode.Core public
 
 open import Relation.Binary as B using (Setoid)
 
 open List using (_∷_; [])
 open import Data.List.All as All using (All; _∷_; []) public
 open import Data.List.Any using (Any; here; there)
-open import Data.List.Any.Membership.Propositional using (_∈_)
-
-open import Data.Vec using (Vec; _∷_; [])
-open import Data.Vec.N-ary
-open import Data.Vec.Relation.InductivePointwise using (Pointwise; []; _∷_)
-
-open import Data.Product.Relation.SigmaPropositional as OverΣ using (OverΣ)
-
-open import Data.Bool using (T)
+open import Data.Bool using (_∨_)
 
 open import Category.Applicative
-
-open import Function.Inverse using (_↔_)
-open import Function.LeftInverse using (_↞_; LeftInverse)
-open import Function.Equality using (_⟨$⟩_)
-
--- import Data.Table as Table hiding (module Table)
-open Table using (Table)
 
 --------------------------------------------------------------------------------
 --  Some named property combinations
 --------------------------------------------------------------------------------
 
 private
-  Maybe-applicative : ∀ {ℓ} → RawApplicative {ℓ} Maybe
-  Maybe-applicative = record
-    { pure = just
-    ; _⊛_ = maybe Maybe.map λ _ → nothing
-    }
+  traverseAll : ∀ {a p p′} {A : Set a} {P : A → Set p} {P′ : A → Set p′} → (∀ {x} → P x → Maybe (P′ x)) → {xs : List A} → All P xs → Maybe (All P′ xs)
+  traverseAll f [] = just []
+  traverseAll f (px ∷ ap) with f px | traverseAll f ap
+  traverseAll f (px ∷ ap) | just px′ | just ap′ = just (px′ ∷ ap′)
+  traverseAll f (px ∷ ap) | _ | _ = nothing
 
 subΠ : ∀ {k k′} {code : Code k} {code′ : Code k′} →
   let open Code code using (K)
       open Code code′ using () renaming (K to K′)
   in (∀ {n} → K′ n → Maybe (K n)) →
      Properties code → Properties code′ → Properties code′
-hasProperty (subΠ f Π₀ Π₁) π = {!!}
+hasProperty (subΠ f Π₀ Π₁) (π , κs) = hasProperty Π₁ (π , κs) ∨ satUnder
+  where
+    satUnder : Bool
+    satUnder with traverseAll f κs
+    satUnder | just κs′ = hasProperty Π₀ (π , κs′)
+    satUnder | nothing = false
 
 data MagmaK : ℕ → Set where
   ∙ : MagmaK 2
@@ -62,32 +52,39 @@ data BimonoidK : ℕ → Set where
 
 module _ where
   open Code
-  open ℕ
+  open Nat using (suc)
+
+  -- TODO: automate proofs like these.
 
   magmaCode : Code _
   K magmaCode = MagmaK
   boundAt magmaCode 2 = 1
   boundAt magmaCode _ = 0
-  isFiniteAt magmaCode 0 = empty-isFinite λ ()
-  isFiniteAt magmaCode 1 = empty-isFinite λ ()
-  isFiniteAt magmaCode (suc (suc (suc _))) = empty-isFinite λ ()
-  isFiniteAt magmaCode 2 = unitary-isFinite (≡.setoid _) ∙ λ {∙ → ≡.refl}
+  isFiniteAt magmaCode 0 = enumerable-isFiniteSet [] λ ()
+  isFiniteAt magmaCode 1 = enumerable-isFiniteSet [] λ ()
+  isFiniteAt magmaCode (suc (suc (suc _))) = enumerable-isFiniteSet [] λ ()
+  isFiniteAt magmaCode 2 = enumerable-isFiniteSet (∙ ∷ []) λ {∙ → here ≡.refl}
 
   monoidCode : Code _
   K monoidCode = MonoidK
   boundAt monoidCode 0 = 1
   boundAt monoidCode 2 = 1
   boundAt monoidCode _ = 0
-  isFiniteAt monoidCode 0 = unitary-isFinite (≡.setoid _) ε λ {ε → ≡.refl}
-  isFiniteAt monoidCode 1 = empty-isFinite λ ()
-  isFiniteAt monoidCode 2 = unitary-isFinite (≡.setoid _) ∙ λ {∙ → ≡.refl}
-  isFiniteAt monoidCode (suc (suc (suc _))) = empty-isFinite λ ()
+  isFiniteAt monoidCode 0 = enumerable-isFiniteSet (ε ∷ []) λ {ε → here ≡.refl}
+  isFiniteAt monoidCode 1 = enumerable-isFiniteSet [] λ ()
+  isFiniteAt monoidCode 2 = enumerable-isFiniteSet (∙ ∷ []) λ {∙ → here ≡.refl}
+  isFiniteAt monoidCode (suc (suc (suc _))) = enumerable-isFiniteSet [] λ ()
 
---   bimonoidCode : Code _
---   K bimonoidCode = BimonoidK
---   allAtArity bimonoidCode zero = 0# ∷ 1# ∷ []
---   allAtArity bimonoidCode (suc (suc zero)) = + ∷ * ∷ []
---   allAtArity bimonoidCode _ = []
+  bimonoidCode : Code _
+  K bimonoidCode = BimonoidK
+  boundAt bimonoidCode 0 = 2
+  boundAt bimonoidCode 2 = 2
+  boundAt bimonoidCode _ = 0
+  isFiniteAt bimonoidCode 0 = enumerable-isFiniteSet (0# ∷ 1# ∷ []) λ {0# → here ≡.refl; 1# → there (here ≡.refl)}
+  isFiniteAt bimonoidCode 1 = enumerable-isFiniteSet [] λ ()
+  isFiniteAt bimonoidCode 2 = enumerable-isFiniteSet (+ ∷ * ∷ []) λ {+ → here ≡.refl; * → there (here ≡.refl)}
+  isFiniteAt bimonoidCode (suc (suc (suc _))) = enumerable-isFiniteSet [] λ ()
+
 
 +-part : ∀ {n} → BimonoidK n → Maybe (MonoidK n)
 +-part 0# = just ε
@@ -99,34 +96,37 @@ module _ where
 *-part * = just ∙
 *-part _ = nothing
 
+-- TODO: Allow specifying properties as a list, using decidable equality to
+-- build the functions.
+
 isSemigroup : Properties magmaCode
-isSemigroup = properties
-  λ { (associative , ∙ ∷ []) → true
-    ; _ → false}
+isSemigroup = properties λ
+  { (associative , ∙ ∷ []) → true
+  ; _ → false}
 
--- isMonoid : Properties monoidCode
--- isMonoid = subΠ (λ {∙ → just ∙; _ → nothing}) isSemigroup (properties
---   λ { (leftIdentity ε ∙) → true
---     ; (rightIdentity ε ∙) → true
---     ; _ → false
---     })
+isMonoid : Properties monoidCode
+isMonoid = subΠ (λ {∙ → just ∙; _ → nothing}) isSemigroup (properties λ
+  { (leftIdentity , ε ∷ ∙ ∷ []) → true
+  ; (rightIdentity , ε ∷ ∙ ∷ []) → true
+  ; _ → false
+  })
 
--- isCommutativeMonoid : Properties monoidCode
--- isCommutativeMonoid = subΠ just isMonoid (properties
---   λ { (commutative ∙) → true
---     ; _ → false
---     })
+isCommutativeMonoid : Properties monoidCode
+isCommutativeMonoid = subΠ just isMonoid (properties λ
+  { (commutative , ∙ ∷ []) → true
+  ; _ → false
+  })
 
--- isSemiring : Properties bimonoidCode
--- isSemiring =
---   subΠ +-part isCommutativeMonoid (
---   subΠ *-part isMonoid (properties
---   λ { (leftZero 0# *) → true
---     ; (rightZero 0# *) → true
---     ; (* distributesOverˡ +) → true
---     ; (* distributesOverʳ +) → true
---     ; _ → false
---     }))
+isSemiring : Properties bimonoidCode
+isSemiring =
+  subΠ +-part isCommutativeMonoid (
+  subΠ *-part isMonoid (properties λ
+  { (leftZero , 0# ∷ * ∷ []) → true
+  ; (rightZero , 0# ∷ * ∷ []) → true
+  ; (distributesOverˡ , * ∷ + ∷ []) → true
+  ; (distributesOverʳ , * ∷ + ∷ []) → true
+  ; _ → false
+  }))
 
 -- module Into where
 --   open Algebra using (Semigroup; Monoid; CommutativeMonoid)
@@ -142,27 +142,27 @@ isSemigroup = properties
 --     }
 --     where open Struct struct
 
--- -- -- --   monoid : ∀ {c ℓ} {props} ⦃ _ : isMonoid ⊆ props ⦄ → Dagma props c ℓ → Monoid c ℓ
--- -- -- --   monoid ⦃ mon ⦄ dagma = record
--- -- -- --     { isMonoid = record
--- -- -- --       { isSemigroup = S.isSemigroup
--- -- -- --       ; identity = proj₂ (from isMonoid hasIdentity)
--- -- -- --       }
--- -- -- --     }
--- -- -- --     where
--- -- -- --       open Dagma dagma
--- -- -- --       module S = Semigroup (semigroup (dagma ↓M isMonoid ↓M isSemigroup))
+--   monoid : ∀ {c ℓ} {props} ⦃ _ : isMonoid ⊆ props ⦄ → Dagma props c ℓ → Monoid c ℓ
+--   monoid ⦃ mon ⦄ dagma = record
+--     { isMonoid = record
+--       { isSemigroup = S.isSemigroup
+--       ; identity = proj₂ (from isMonoid hasIdentity)
+--       }
+--     }
+--     where
+--       open Dagma dagma
+--       module S = Semigroup (semigroup (dagma ↓M isMonoid ↓M isSemigroup))
 
--- -- -- --   commutativeMonoid : ∀ {c ℓ} {props} ⦃ _ : isCommutativeMonoid ⊆ props ⦄ → Dagma props c ℓ → CommutativeMonoid c ℓ
--- -- -- --   commutativeMonoid dagma = record
--- -- -- --     { isCommutativeMonoid = record
--- -- -- --       { isSemigroup = S.isSemigroup
--- -- -- --       ; leftIdentity = proj₁ (proj₂ (from isCommutativeMonoid hasIdentity))
--- -- -- --       ; comm = from isCommutativeMonoid commutative
--- -- -- --       }
--- -- -- --     }
--- -- -- --     where
--- -- -- --       open Dagma dagma
--- -- -- --       module S = Semigroup (semigroup (dagma ↓M isCommutativeMonoid ↓M isSemigroup))
+--   commutativeMonoid : ∀ {c ℓ} {props} ⦃ _ : isCommutativeMonoid ⊆ props ⦄ → Dagma props c ℓ → CommutativeMonoid c ℓ
+--   commutativeMonoid dagma = record
+--     { isCommutativeMonoid = record
+--       { isSemigroup = S.isSemigroup
+--       ; leftIdentity = proj₁ (proj₂ (from isCommutativeMonoid hasIdentity))
+--       ; comm = from isCommutativeMonoid commutative
+--       }
+--     }
+--     where
+--       open Dagma dagma
+--       module S = Semigroup (semigroup (dagma ↓M isCommutativeMonoid ↓M isSemigroup))
 
--- -- -- --   -- semiring
+--   -- semiring

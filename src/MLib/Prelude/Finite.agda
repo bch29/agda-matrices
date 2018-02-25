@@ -3,6 +3,7 @@ module MLib.Prelude.Finite where
 open import MLib.Prelude.FromStdlib
 import MLib.Prelude.Fin as Fin
 import MLib.Prelude.Fin.Pieces as P
+open import MLib.Prelude.RelProps
 open Fin using (Fin)
 
 open import Data.List.All as All using (All; []; _∷_) hiding (module All)
@@ -36,8 +37,17 @@ record IsFiniteSetoid {c ℓ} (setoid : Setoid c ℓ) (N : ℕ) : Set (c ⊔ˡ �
   field
     ontoFin : OntoFin N
 
+  fromIx : Fin N → A
+  fromIx i = LeftInverse.from ontoFin ⟨$⟩ i
+
+  toIx : A → Fin N
+  toIx x = LeftInverse.to ontoFin ⟨$⟩ x
+
+  fromIx-toIx : ∀ x → fromIx (toIx x) ≈ x
+  fromIx-toIx = LeftInverse.left-inverse-of ontoFin
+
   enumTable : Table A N
-  enumTable = tabulate (LeftInverse.from ontoFin ⟨$⟩_)
+  enumTable = tabulate fromIx
 
   enumerate : List A
   enumerate = Table.toList enumTable
@@ -58,45 +68,6 @@ record FiniteSet c ℓ : Set (sucˡ (c ⊔ˡ ℓ)) where
 --------------------------------------------------------------------------------
 --  Combinators
 --------------------------------------------------------------------------------
-
-emptySetoid : ∀ {a} {A : Set a} → ¬ A → Setoid a a
-emptySetoid {A = A} ¬A = record
-  { _≈_ = ⊥-elim ∘ ¬A
-  ; isEquivalence = record
-    { refl = λ {x} → ⊥-elim (¬A x)
-    ; sym = λ {x} → ⊥-elim (¬A x)
-    ; trans = λ {x} → ⊥-elim (¬A x)
-    }
-  }
-
--- An empty set is finite
-
-empty-isFinite : ∀ {a} {A : Set a} (¬A : ¬ A) → IsFiniteSetoid (emptySetoid ¬A) 0
-empty-isFinite ¬A = record
-  { ontoFin = record
-    { to = record { _⟨$⟩_ = ⊥-elim ∘ ¬A ; cong = λ {x} → ⊥-elim (¬A x) }
-    ; from = record { _⟨$⟩_ = λ () ; cong = λ {i} → ⊥-elim (nofin0 i) }
-    ; left-inverse-of = ⊥-elim ∘ ¬A
-    }
-  }
-  where
-    nofin0 : ¬ Fin 0
-    nofin0 ()
-
--- A set with a single member is finite
-
-unitary-isFinite : ∀ {c ℓ} (setoid : Setoid c ℓ) →
-  let open Setoid setoid
-  in ∀ x → (∀ y → x ≈ y) → IsFiniteSetoid setoid 1
-unitary-isFinite setoid x unique = record
-  { ontoFin = record
-    { to = FE.const Fin.zero
-    ; from = FE.const x
-    ; left-inverse-of = unique
-    }
-  }
-  where open Setoid setoid
-
 
 -- An enumerable setoid is finite
 
@@ -139,27 +110,18 @@ module _ {c ℓ} (setoid : Setoid c ℓ) where
 module _ {a} {A : Set a} where
   open PropMembership
 
-  enumerable-isFiniteSet : ∀ {a} {A : Set a} {xs : List A} (f : ∀ x → x ∈ xs) → IsFiniteSet A (List.length xs)
-  enumerable-isFiniteSet f = enumerable-isFiniteSetoid (≡.setoid _) f (≡.cong (Any.index ∘ f))
+  enumerable-isFiniteSet : (xs : List A) (f : ∀ x → x ∈ xs) → IsFiniteSet A (List.length xs)
+  enumerable-isFiniteSet _ f = enumerable-isFiniteSetoid (≡.setoid _) f (≡.cong (Any.index ∘ f))
 
 
 -- Given a function with a left inverse from some 'A' to a finite set, 'A' must also be finite.
 
-extendFinite : ∀ {c ℓ c′ ℓ′} {S : Setoid c′ ℓ′} (F : FiniteSet c ℓ) → LeftInverse S (FiniteSet.setoid F) → IsFiniteSetoid S (FiniteSet.N F)
+extendFinite : ∀ {c ℓ c′ ℓ′} {S : Setoid c ℓ} (F : FiniteSet c′ ℓ′) → LeftInverse S (FiniteSet.setoid F) → IsFiniteSetoid S (FiniteSet.N F)
 extendFinite finiteSet ontoF = record
   { ontoFin = ontoFin ⁱ∘ ontoF
   }
   where
     open FiniteSet finiteSet using (ontoFin)
-
-
--- Sum over a finite set
-
-module _ {c} {ℓ} (F : FiniteSet c ℓ) where
-  open FiniteSet F
-
-  Σᶠ : ∀ {p} → (Carrier → Set p) → Set p
-  Σᶠ P = ∃ (P ∘ lookup enumTable)
 
 
 -- Given a family of finite sets, indexed by a finite set, the sum over the entire family is finite.
@@ -170,6 +132,9 @@ module _ {a} {A : Set a} {N} (F : IsFiniteSetoid (≡.setoid A) N) where
     finiteSet = record { isFiniteSetoid = F }
 
     module F = FiniteSet finiteSet
+
+    Σᶠ : ∀ {p} → (A → Set p) → Set p
+    Σᶠ P = ∃ (P ∘ lookup F.enumTable)
 
   module _ {p} {P : A → Set p} {boundAt : A → ℕ} (finiteAt : ∀ x → IsFiniteSet (P x) (boundAt x)) where
     private
@@ -183,32 +148,35 @@ module _ {a} {A : Set a} {N} (F : IsFiniteSetoid (≡.setoid A) N) where
 
       open P.Pieces pieces hiding (pieces)
 
-    Σₜ-isFiniteSet : IsFiniteSet (Σᶠ finiteSet P) totalSize
-    Σₜ-isFiniteSet = record
+    Σ-isFiniteSet : IsFiniteSet (Σ A P) totalSize
+    Σ-isFiniteSet = record
       { ontoFin =
-        Σᶠ finiteSet P              ∼⟨ intoCoords ⟩
+        ∃ P                         ∼⟨ Σ-↞′ F.ontoFin ⟩
+        Σᶠ P                        ∼⟨ intoCoords ⟩
         Σ (Fin N) (Fin ∘ sizeAt)    ↔⟨ P.asPiece pieces ⟩
         Fin totalSize               ∎
       }
       where
         open RelReasoning
 
-        to : Σᶠ finiteSet P → Σ (Fin N) (Fin ∘ sizeAt)
-        to (_ , px) = _ , LeftInverse.to (PW.ontoFin _) ⟨$⟩ px
+        to : Σᶠ P → Σ (Fin N) (Fin ∘ sizeAt)
+        to (_ , px) = _ , PW.toIx _ px
 
-        from : Σ (Fin N) (Fin ∘ sizeAt) → Σᶠ finiteSet P
-        from (i , j) = _ , (LeftInverse.from (PW.ontoFin _) ⟨$⟩ j)
+        from : Σ (Fin N) (Fin ∘ sizeAt) → Σᶠ P
+        from (i , j) = _ , PW.fromIx _ j
 
         left-inverse-of : ∀ x → from (to x) ≡ x
-        left-inverse-of (i , x) = ≡.cong (i ,_) (LeftInverse.left-inverse-of (PW.ontoFin _) x)
+        left-inverse-of (i , x) = ≡.cong (i ,_) (PW.fromIx-toIx _ _)
 
-        intoCoords : Σᶠ finiteSet P ↞ Σ (Fin N) (Fin ∘ sizeAt)
+        intoCoords : Σᶠ P ↞ Σ (Fin N) (Fin ∘ sizeAt)
         intoCoords = record
           { to = ≡.→-to-⟶ to
           ; from = ≡.→-to-⟶ from
           ; left-inverse-of = left-inverse-of
           }
 
+
+-- TODO: Recast as an instance of Σ-isFiniteSet
 
 module _ {a p} {A : Set a} {P : A → Set p} (boundAt : A → ℕ) (finiteAt : ∀ x → IsFiniteSet (P x) (boundAt x)) where
   private
@@ -217,8 +185,6 @@ module _ {a p} {A : Set a} {P : A → Set p} (boundAt : A → ℕ) (finiteAt : �
   finiteAllSize : List A → ℕ
   finiteAllSize = List.product ∘ List.map boundAt
 
-  -- allPair : ∀ xs → All P xs ↔ ∃ (P ∘ Table.lookup (Table.fromList xs))
-  -- allPair = {!!}
 
   finiteAll : (xs : List A) → IsFiniteSet (All P xs) _
   finiteAll _ = record
@@ -245,18 +211,18 @@ module _ {a p} {A : Set a} {P : A → Set p} (boundAt : A → ℕ) (finiteAt : �
 
       to : ∀ {xs} → All P xs → Fin (finiteAllSize xs)
       to [] = Fin.zero
-      to (_∷_ {x} {xs} px ap) = joinProd ((LeftInverse.to (PW.ontoFin _) ⟨$⟩ px) , to ap)
+      to (_∷_ {x} {xs} px ap) = joinProd (PW.toIx _ px , to ap)
 
       from : ∀ {xs} → Fin (finiteAllSize xs) → All P xs
       from {List.[]} _ = []
       from {x List.∷ xs} i =
-        (LeftInverse.from (PW.ontoFin _) ⟨$⟩ (proj₁ (splitProd i))) ∷
+        (PW.fromIx _ (proj₁ (splitProd i))) ∷
         from {xs} (proj₂ (splitProd {boundAt x} i))
 
       left-inverse-of : ∀ {xs} (ap : All P xs) → from (to ap) ≡ ap
       left-inverse-of [] = ≡.refl
       left-inverse-of (px ∷ ap)
-        rewrite splitProd-joinProd ((LeftInverse.to (PW.ontoFin _) ⟨$⟩ px) , to ap)
-              | LeftInverse.left-inverse-of (IsFiniteSetoid.ontoFin (finiteAt _)) px
+        rewrite splitProd-joinProd (PW.toIx _ px , to ap)
+              | PW.fromIx-toIx _ px
               | left-inverse-of ap
               = ≡.refl

@@ -3,6 +3,7 @@ module MLib.Algebra.PropertyCode.Core where
 open import MLib.Prelude
 open import MLib.Prelude.Fin.Pieces
 open import MLib.Prelude.Finite
+import MLib.Prelude.Finite.Properties as FiniteProps
 open import MLib.Algebra.PropertyCode.RawStruct
 open import MLib.Algebra.Instances
 
@@ -20,15 +21,17 @@ open import Data.Vec.Relation.InductivePointwise using (Pointwise; []; _∷_)
 open import Data.Product.Relation.SigmaPropositional as OverΣ using (OverΣ)
 
 open import Data.Bool using (T)
+open import Data.Bool.Properties using (∧-isCommutativeMonoid; ∧-idem; T-≡)
 
 open import Category.Applicative
 
 open import Function.Inverse using (_↔_)
 open import Function.LeftInverse using (_↞_; LeftInverse)
 open import Function.Equality using (_⟨$⟩_)
+open import Function.Equivalence using (Equivalence)
 
 open Table using (Table)
-
+open Algebra using (IdempotentCommutativeMonoid)
 
 --------------------------------------------------------------------------------
 --  Universe of properties
@@ -162,18 +165,32 @@ record Code k : Set (sucˡ k) where
     boundAt : ℕ → ℕ
     isFiniteAt : ∀ n → IsFiniteSet (K n) (boundAt n)
 
-  Property′ = Σᶠ finiteProperty (All K ∘ opArities)
+  Property′ = Σ Property (All K ∘ opArities)
 
-  Property′-IsFiniteSet : IsFiniteSet Property′ _
-  Property′-IsFiniteSet =
-    Σₜ-isFiniteSet Property-IsFiniteSet (finiteAll boundAt isFiniteAt ∘ opArities)
+  module Property′ where
+    finiteSet : FiniteSet _ _
+    finiteSet = record
+      { isFiniteSetoid =
+          Σ-isFiniteSet Property-IsFiniteSet (finiteAll boundAt isFiniteAt ∘ opArities)
+      }
+
+    open FiniteSet finiteSet public
+    open FiniteProps finiteSet public
 
   allAppliedProperties : List Property′
-  allAppliedProperties = IsFiniteSetoid.enumerate Property′-IsFiniteSet
+  allAppliedProperties = FiniteSet.enumerate Property′.finiteSet
 
 
 open Bool
 
+module BoolExtra where
+  ∧-idempotentCommutativeMonoid : IdempotentCommutativeMonoid _ _
+  ∧-idempotentCommutativeMonoid = record
+    { isIdempotentCommutativeMonoid = record
+      { isCommutativeMonoid = ∧-isCommutativeMonoid
+      ; idem = ∧-idem
+      }
+    }
 
 record Properties {k} (code : Code k) : Set k where
   constructor properties
@@ -183,34 +200,115 @@ record Properties {k} (code : Code k) : Set k where
   field
     hasProperty : Property′ → Bool
 
-  HasProperty : Property′ → Set
-  HasProperty = T ∘ hasProperty
+  record Has (π : Property′) : Set where
+    constructor fromTruth
+    field
+      truth : T (hasProperty π)
 
   hasAll : Bool
-  hasAll = List.foldr (λ π b → hasProperty π ∧ b) true allAppliedProperties
+  hasAll = Property′.foldMap BoolExtra.∧-idempotentCommutativeMonoid hasProperty
 
-  HasAll : Set
-  HasAll = T hasAll
+  -- Inhabited if all the properties are present. Suitable for use as an
+  -- implicit argument but difficult to work with.
+
+  record ⊨ : Set where
+    constructor fromTruth
+    field
+      truth : T (hasAll)
+
+  -- Inhabited if all the properties are present. Unsuitable for use as an
+  -- implicit argument, but easy to work with.
+
+  ⊢ : Set k
+  ⊢ = ∀ π → Has π
+
 
 open Properties public
-open Code using (Property′) public
+open Code using (Property′; module Property′) public
 
--- singleton : ∀ {k} {code : Code k} → Property′ code → Properties code
--- singleton π = properties {!!}
+module _ {k} {code : Code k} where
 
-_∈ₚ_ : ∀ {k} {code : Code k} → Property′ code → Properties code → Set
-π ∈ₚ Π = HasProperty Π π
+  -- The two forms of truth are equivalent to each other, as we would hope.
 
-_⇒ₚ_ : ∀ {k} {code : Code k} → Properties code → Properties code → Properties code
-hasProperty (Π₁ ⇒ₚ Π₂) π = not (hasProperty Π₁ π) ∨ hasProperty Π₂ π
+  ⊢→⊨ : {Π : Properties code} → ⊢ Π → ⊨ Π
+  ⊢→⊨ {Π} p = ⊨.fromTruth (Equivalence.from T-≡ ⟨$⟩ hasAll-true)
+    where
+    hasProperty-const : ∀ π → hasProperty Π π ≡ true
+    hasProperty-const π = Equivalence.to T-≡ ⟨$⟩ Has.truth (p π)
 
-⇒ₚ-β : ∀ {k} {code : Code k} {Π₁ Π₂ : Properties code} → HasAll (Π₁ ⇒ₚ Π₂) → HasAll Π₁ → HasAll Π₂
-⇒ₚ-β has⇒ hasΠ₁ = {!!}
+    open ≡.Reasoning
+    icm = BoolExtra.∧-idempotentCommutativeMonoid
 
-⇒ₚ-trans : ∀ {k} {code : Code k} {Π₁ Π₂ Π₃ : Properties code} → HasAll (Π₁ ⇒ₚ Π₂) → HasAll (Π₂ ⇒ₚ Π₃) → HasAll (Π₁ ⇒ₚ Π₃)
-⇒ₚ-trans = {!!}
+    hasAll-true : hasAll Π ≡ true
+    hasAll-true = begin
+      hasAll Π                                        ≡⟨⟩
+      Property′.foldMap code icm (hasProperty Π)      ≡⟨ Property′.foldMap-cong code icm hasProperty-const  ⟩
+      Property′.foldMap code icm (λ _ → true)         ≡⟨ proj₁ (IdempotentCommutativeMonoid.identity icm) _ ⟩
+      true ∧ Property′.foldMap code icm (λ _ → true)  ≡⟨ Property′.foldMap-const code icm ⟩
+      true                                            ∎
+
+  ⊨→⊢ : {Π : Properties code} → ⊨ Π → ⊢ Π
+  ⊨→⊢ {Π} t π = Has.fromTruth (Equivalence.from T-≡ ⟨$⟩ hasProperty-true)
+    where
+      i = Property′.toIx code π
+
+      open ≡.Reasoning
+      icm = BoolExtra.∧-idempotentCommutativeMonoid
+      module ∧ = IdempotentCommutativeMonoid icm
+
+      hasAll-true : hasAll Π ≡ true
+      hasAll-true = Equivalence.to T-≡ ⟨$⟩ ⊨.truth t
+
+      hasProperty-true : hasProperty Π π ≡ true
+      hasProperty-true = begin
+        hasProperty Π π            ≡⟨ ≡.sym (proj₂ ∧.identity _ ) ⟩
+        hasProperty Π π ∧ true     ≡⟨ ∧.∙-cong (≡.refl {x = hasProperty Π π}) (≡.sym hasAll-true)  ⟩
+        hasProperty Π π ∧ hasAll Π ≡⟨ Property′.enumTable-complete code icm (≡.→-to-⟶ (hasProperty Π)) π ⟩
+        hasAll Π                   ≡⟨ hasAll-true ⟩
+        true                       ∎
+
+  singleton : Property′ code → Properties code
+  singleton π = properties λ π′ → ⌊ Property′._≟_ code π π′ ⌋
+
+  _∈ₚ_ : Property′ code → Properties code → Set
+  π ∈ₚ Π = Has Π π
+
+  π-∈ₚ-singleton : ∀ {π} → π ∈ₚ singleton π
+  Has.truth (π-∈ₚ-singleton {π}) with Property′._≟_ code π π
+  Has.truth (π-∈ₚ-singleton {π}) | yes p = _
+  Has.truth (π-∈ₚ-singleton {π}) | no ¬p = ¬p ≡.refl
+
+  _⇒ₚ_ : Properties code → Properties code → Properties code
+  hasProperty (Π₁ ⇒ₚ Π₂) π = not (hasProperty Π₁ π) ∨ hasProperty Π₂ π
+
+  Bool-MP : ∀ {x y} → T (not x ∨ y) → T x → T y
+  Bool-MP {false} {false} _ ()
+  Bool-MP {false} {true} _ _ = tt
+  Bool-MP {true} {false} ()
+  Bool-MP {true} {true} _ _ = tt
+
+  ⇒ₚ-MP′ : ∀ {Π₁ Π₂} → ⊢ (Π₁ ⇒ₚ Π₂) → ⊢ Π₁ → ⊢ Π₂
+  ⇒ₚ-MP′ {Π₁} {Π₂} f g π = Has.fromTruth (Bool-MP (Has.truth (f π)) (Has.truth (g π)))
+
+  ⇒ₚ-MP : ∀ {Π₁ Π₂} → ⊨ (Π₁ ⇒ₚ Π₂) → ⊨ Π₁ → ⊨ Π₂
+  ⇒ₚ-MP has⇒ hasΠ₁ = ⊢→⊨ (⇒ₚ-MP′ (⊨→⊢ has⇒) (⊨→⊢ hasΠ₁))
+
+  -- Bool-abs : ∀ {x y} → (T x → T y) → T (not x ∨ y)
+  -- Bool-abs {false} {false} f = tt
+  -- Bool-abs {false} {true} f = tt
+  -- Bool-abs {true} {false} f = f tt
+  -- Bool-abs {true} {true} f = tt
+
+  -- ⇒ₚ-abs′ : ∀ {Π₁ Π₂} → (⊢ Π₁ → ⊢ Π₂) → ⊢ (Π₁ ⇒ₚ Π₂)
+  -- ⇒ₚ-abs′ f π = fromTruth (Bool-abs {!!})
+
+  -- ⇒ₚ-abs : ∀ {Π₁ Π₂} → (⊨ Π₁ → ⊨ Π₂) → ⊨ (Π₁ ⇒ₚ Π₂)
+  -- ⇒ₚ-abs f = ⊢→⊨ (λ π → {!!})
+
+  -- ⇒ₚ-trans : ∀ {Π₁ Π₂ Π₃} → ⊨ (Π₁ ⇒ₚ Π₂) → ⊨ (Π₂ ⇒ₚ Π₃) → ⊨ (Π₁ ⇒ₚ Π₃)
+  -- ⇒ₚ-trans {Π₁} p q = ⇒ₚ-abs {Π₁} λ x → ⇒ₚ-MP q (⇒ₚ-MP p x)
 
 
--- Has⇒ₚ : ∀ {k} {code : Code k} {Π Π′ : Properties code} {π : Property′ code} → π ∈ₚ Π′ → HasAll (Π′ ⇒ₚ Π) → π ∈ₚ Π
--- Has⇒ₚ {Π = Π} {Π′} {π} hasπ has⇒ = ⇒ₚ-eval {Π₂ = singleton π} {!!} has⇒
-
+  Has⇒ₚ : ∀ {Π Π′ π} → π ∈ₚ Π′ → ⊨ (Π′ ⇒ₚ Π) → π ∈ₚ Π
+  Has⇒ₚ {Π = Π} {Π′} {π} hasπ has⇒ =
+    fromTruth (Bool-MP (Has.truth (⊨→⊢ has⇒ π)) (Has.truth hasπ))
