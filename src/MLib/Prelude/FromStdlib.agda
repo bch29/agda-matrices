@@ -30,7 +30,7 @@ open Bool using (Bool; true; false) hiding (module Bool) public
 module Nat where
   open import Data.Nat public
   open import Data.Nat.Properties public
-open Nat using (ℕ) public
+open Nat using (ℕ) hiding (module ℕ) public
 
 module Maybe where
   open import Data.Maybe public
@@ -39,7 +39,12 @@ open Maybe using (Maybe; just; nothing; maybe) hiding (module Maybe) public
 module List where
   open import Data.List public
   open import Data.List.Properties public
-open List using (List) hiding (module List) public
+open List using (List; _∷_; []) hiding (module List) public
+
+module Table where
+  open import Data.Table public
+  open import Data.Table.Properties public
+open Table using (Table; tabulate; lookup) hiding (module Table) public
 
 --------------------------------------------------------------------------------
 --  Combinators

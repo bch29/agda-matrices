@@ -11,11 +11,6 @@ open import Data.List.Any as Any using (Any; here; there) hiding (module Any)
 import Data.List.Any.Membership as Membership
 import Data.List.Any.Membership.Propositional as PropMembership
 
-module Table where
-  open import Data.Table public
-  open import Data.Table.Properties public
-open Table using (Table; tabulate; lookup) hiding (module Table)
-
 open import Function.LeftInverse using (LeftInverse; _↞_) renaming (_∘_ to _ⁱ∘_)
 open import Function.Inverse using (Inverse; _↔_)
 open import Function.Equality as FE using (_⟶_; _⟨$⟩_; cong)
@@ -196,8 +191,8 @@ module _ {a p} {A : Set a} {P : A → Set p} (boundAt : A → ℕ) (finiteAt : �
     }
     where
       prodIsSum : ∀ m n → m Nat.* n ≡ Table.foldr Nat._+_ 0 (Table.replicate {m} n)
-      prodIsSum ℕ.zero _ = ≡.refl
-      prodIsSum (ℕ.suc m) n = ≡.cong₂ Nat._+_ (≡.refl {x = n}) (prodIsSum m n)
+      prodIsSum Nat.zero _ = ≡.refl
+      prodIsSum (Nat.suc m) n = ≡.cong₂ Nat._+_ (≡.refl {x = n}) (prodIsSum m n)
 
       splitProd : ∀ {m n} → Fin (m Nat.* n) → Fin m × Fin n
       splitProd {m} {n} ij rewrite prodIsSum m n = Inverse.from (P.asPiece (P.constPieces m n )) ⟨$⟩ ij

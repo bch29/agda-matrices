@@ -2,23 +2,29 @@ module MLib.Matrix where
 
 open import MLib.Prelude
 open import MLib.Algebra.PropertyCode
+open import MLib.Algebra.PropertyCode.Structures
+
+open import Data.Vec.Relation.InductivePointwise using (Pointwise; []; _∷_)
 
 open Algebra using (CommutativeMonoid)
 
--- open Data.Table
+open PropertyC
 
 module _ {ℓ} where
 
   Matrix : Set ℓ → ℕ → ℕ → Set ℓ
   Matrix S m n = Fin m → Fin n → S
 
-  module Setoids {p} (elem-setoid : Setoid ℓ p) {m n : ℕ} where
+module _ {c ℓ} (struct : Struct bimonoidCode c ℓ) where
+  module S = Struct struct renaming (Carrier to S; _≈_ to _≈′_)
+  open S using (S; _≈′_; _⟨_⟩_; ⟦_⟧; from; from′; use; Has; HasList; HasEach)
 
-    private module S = Setoid elem-setoid
-    open S using () renaming (Carrier to S)
+  module _ {m n} where
+
+    -- Pointwise equality --
 
     _≈_ : Rel (Matrix S m n) _
-    A ≈ B = ∀ i j → A i j S.≈ B i j
+    A ≈ B = ∀ i j → A i j ≈′ B i j
 
     isEquivalence : IsEquivalence _≈_
     isEquivalence = record { Proofs } where
@@ -35,45 +41,38 @@ module _ {ℓ} where
     setoid : Setoid _ _
     setoid = record { isEquivalence = isEquivalence }
 
-  module Additive {p} (props : List MagmaProperty) (dagma : Dagma props ℓ p) where
-    open Dagma dagma renaming (_∙_ to _+_; ε to 0#; Carrier to S; _≈_ to _≈′_; ∙-cong to +-cong)
+    open Algebra.FunctionProperties _≈_
 
-    module _ {m n : ℕ} where
-      open Setoids setoid {m} {n}
-      open Algebra.FunctionProperties _≈_
+    -- Pointwise addition --
 
-      _⊕_ : Matrix S m n → Matrix S m n → Matrix S m n
-      (A ⊕ B) i j = A i j + B i j
+    _⊕_ : Matrix S m n → Matrix S m n → Matrix S m n
+    (A ⊕ B) i j = A i j ⟨ + ⟩ B i j
 
-      ⊕-cong : Congruent₂ _⊕_
-      ⊕-cong p q = λ i j → +-cong (p i j) (q i j)
+    ⊕-cong : Congruent₂ _⊕_
+    ⊕-cong p q = λ i j → S.congⁿ + (p i j ∷ q i j ∷ [])
 
-      assoc : ⦃ _ : has associative ⦄ → Associative _⊕_
-      assoc A B C i j = use associative (A i j) (B i j) (C i j)
+    assoc : ⦃ _ : HasList (associative on + ∷ []) ⦄ → Associative _⊕_
+    assoc A B C i j = from′ (associative on + ∷ []) (associative on +) (A i j) (B i j) (C i j)
 
-      module _ ⦃ _ : has hasIdentity ⦄ where
-        0● : Matrix S m n
-        0● _ _ = 0#
+    0● : Matrix S m n
+    0● _ _ = ⟦ 0# ⟧
 
-        identityˡ : LeftIdentity 0● _⊕_
-        identityˡ A i j = proj₁ identity (A i j)
+    identityˡ : ⦃ _ : Has (0# is leftIdentity for +) ⦄ → LeftIdentity 0● _⊕_
+    identityˡ A i j = use (0# is leftIdentity for +) (A i j)
 
-        identityʳ : RightIdentity 0● _⊕_
-        identityʳ A i j = proj₂ identity (A i j)
+    identityʳ : ⦃ _ : Has (0# is rightIdentity for +) ⦄ → RightIdentity 0● _⊕_
+    identityʳ A i j = use (0# is rightIdentity for +) (A i j)
 
-  module Bimagmas {p} (props : List BimagmaProperty) (bidagma : Bidagma props ℓ p) where
-    open Bidagma bidagma
-      renaming (Carrier to S; _≈_ to _≈′_)
 
-    module _ ⦃ _ : +-has′ isCommutativeMonoid ⦄ where
-      +-commutativeMonoid : CommutativeMonoid ℓ p
-      +-commutativeMonoid = Into.commutativeMonoid +-dagma
+    -- module _ ⦃ _ : HasEach isCommutativeMonoid ⦄ where
+--       +-commutativeMonoid : CommutativeMonoid ℓ p
+--       +-commutativeMonoid = Into.commutativeMonoid +-dagma
 
-      private
-        module M where
-          open import Algebra.Operations.CommutativeMonoid +-commutativeMonoid public
-          open import Algebra.Properties.CommutativeMonoid +-commutativeMonoid public
-      open M using (sumTable; sumTable-syntax)
+--       private
+--         module M where
+--           open import Algebra.Operations.CommutativeMonoid +-commutativeMonoid public
+--           open import Algebra.Properties.CommutativeMonoid +-commutativeMonoid public
+--       open M using (sumTable; sumTable-syntax)
 
       -- sumDistribˡ : ∀ {n} c f → c ⊛ sum n f ≈′ ∑[ i < n ] (c ⊛ f i)
       -- sumDistribˡ {Nat.zero} _ _ = proj₂ S.zero _

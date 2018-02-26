@@ -74,15 +74,12 @@ record IsRawStruct {c ℓ} {A : Set c} (_≈_ : Rel A ℓ) {k} {K : ℕ → Set 
   ⟦_⟧ : ∀ {n} → K n → N-ary n A A
   ⟦ κ ⟧ = curryⁿ (appOp κ)
 
-  point : K 0 → A
-  point = ⟦_⟧
-
   _⟨_⟩_ : A → K 2 → A → A
   x ⟨ κ ⟩ y = ⟦ κ ⟧ x y
 
   open IsEquivalence isEquivalence public
 
-record RawStruct c ℓ {k} (K : ℕ → Set k) : Set (sucˡ (c ⊔ˡ ℓ ⊔ˡ k)) where
+record RawStruct {k} (K : ℕ → Set k) c ℓ : Set (sucˡ (c ⊔ˡ ℓ ⊔ˡ k)) where
   infix 4 _≈_
 
   field
@@ -95,7 +92,7 @@ record RawStruct c ℓ {k} (K : ℕ → Set k) : Set (sucˡ (c ⊔ˡ ℓ ⊔ˡ k
 
   -- If we pick out a subset of the operators in the structure, that too forms a
   -- structure.
-  subRawStruct : ∀ {k′} (K′ : ∀ {n} → K n → Set k′) → RawStruct c ℓ (λ n → Σ (K n) K′)
+  subRawStruct : ∀ {k′} (K′ : ∀ {n} → K n → Set k′) → RawStruct (λ n → Σ (K n) K′) c ℓ
   subRawStruct K′ = record
     { Carrier = Carrier
     ; _≈_ = _≈_

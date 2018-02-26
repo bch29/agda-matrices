@@ -4,8 +4,6 @@ open import MLib.Prelude.FromStdlib
 open import MLib.Prelude.Fin
 open import MLib.Prelude.RelProps
 
-open import Data.Table as Table using (Table) hiding (module Table)
-
 open import Function.Inverse using (Inverse; _↔_)
 open import Function.LeftInverse using (LeftInverse; _↞_)
 open import Function.Surjection using (_↠_)

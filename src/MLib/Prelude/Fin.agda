@@ -5,8 +5,6 @@ open import MLib.Prelude.FromStdlib hiding (module Σ)
 open import Data.Fin public
 open import Data.Fin.Properties public
 
-open import Data.Table as Table using (Table) hiding (module Table)
-
 open import Function.LeftInverse using (LeftInverse; _↞_)
 open import Function.Equality using (_⟶_; _⟨$⟩_; cong)
 
@@ -26,8 +24,8 @@ Fin∸ {n} i = Fin (n Nat.∸ toℕ i)
 --------------------------------------------------------------------------------
 
 foldUpto : ∀ {a} {A : Set a} n → A → (Fin n → A → A) → A
-foldUpto ℕ.zero z f = z
-foldUpto (ℕ.suc n) z f = f zero (foldUpto n z (f ∘ suc))
+foldUpto Nat.zero z f = z
+foldUpto (Nat.suc n) z f = f zero (foldUpto n z (f ∘ suc))
 
 foldMap : ∀ {n ℓ} {A : Set ℓ} → A → (A → A → A) → (Fin n → A) → A
 foldMap {n} z f g = foldUpto n z (f ∘ g)
@@ -97,20 +95,20 @@ data Compareℕ {m} : (i : Fin m) (n : ℕ) → Set where
   greater : ∀ greatest (least : Fin′ greatest) → Compareℕ greatest (toℕ least)
 
 compareℕ : ∀ {m} (i : Fin m) (n : ℕ) → Compareℕ i n
-compareℕ zero ℕ.zero = equal _
-compareℕ zero (ℕ.suc n) = less (suc zero) zero
-compareℕ (suc i) ℕ.zero = greater (suc i) zero
-compareℕ (suc i) (ℕ.suc n) with compareℕ i n
-compareℕ (suc .(inject! least)) (ℕ.suc n) | less bound least = less (suc bound) (suc least)
-compareℕ (suc i) (ℕ.suc .(toℕ i)) | equal .i = equal (suc i)
-compareℕ (suc i) (ℕ.suc .(toℕ least)) | greater .i least = greater (suc i) (suc least)
+compareℕ zero Nat.zero = equal _
+compareℕ zero (Nat.suc n) = less (suc zero) zero
+compareℕ (suc i) Nat.zero = greater (suc i) zero
+compareℕ (suc i) (Nat.suc n) with compareℕ i n
+compareℕ (suc .(inject! least)) (Nat.suc n) | less bound least = less (suc bound) (suc least)
+compareℕ (suc i) (Nat.suc .(toℕ i)) | equal .i = equal (suc i)
+compareℕ (suc i) (Nat.suc .(toℕ least)) | greater .i least = greater (suc i) (suc least)
 
 reduce+ : ∀ m {n} (i : Fin (m Nat.+ n)) → (∃ λ (j : Fin m) → inject+ n j ≡ i) ⊎ ∃ λ j → raise m j ≡ i
-reduce+ ℕ.zero i = inj₂ (i , ≡.refl)
-reduce+ (ℕ.suc m) zero = inj₁ (zero , ≡.refl)
-reduce+ (ℕ.suc m) (suc i) with reduce+ m i
-reduce+ (ℕ.suc m) (suc i) | inj₁ (j , p) = inj₁ (suc j , ≡.cong suc p)
-reduce+ (ℕ.suc m) (suc i) | inj₂ (j , p) = inj₂ (j , ≡.cong suc p)
+reduce+ Nat.zero i = inj₂ (i , ≡.refl)
+reduce+ (Nat.suc m) zero = inj₁ (zero , ≡.refl)
+reduce+ (Nat.suc m) (suc i) with reduce+ m i
+reduce+ (Nat.suc m) (suc i) | inj₁ (j , p) = inj₁ (suc j , ≡.cong suc p)
+reduce+ (Nat.suc m) (suc i) | inj₂ (j , p) = inj₂ (j , ≡.cong suc p)
 
 inject+-injective : ∀ {n m} {i j : Fin m} → inject+ n i ≡ inject+ n j → i ≡ j
 inject+-injective {i = zero} {zero} p = ≡.refl
@@ -123,6 +121,6 @@ raise≢ _ _ {j = zero} ()
 raise≢ _ _ {j = suc _} p = ⊥-elim (raise≢ _ _ (suc-injective p))
 
 raise-injective : ∀ {m} n {i j : Fin m} → raise n i ≡ raise n j → i ≡ j
-raise-injective ℕ.zero {i} {j} p = p
-raise-injective (ℕ.suc n) {i} {j} p = raise-injective n (suc-injective p)
+raise-injective Nat.zero {i} {j} p = p
+raise-injective (Nat.suc n) {i} {j} p = raise-injective n (suc-injective p)
 

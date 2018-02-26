@@ -16,153 +16,40 @@ open import Data.Bool using (_∨_)
 
 open import Category.Applicative
 
---------------------------------------------------------------------------------
---  Some named property combinations
---------------------------------------------------------------------------------
+record Struct {k} (code : Code k) c ℓ : Set (sucˡ (c ⊔ˡ ℓ ⊔ˡ k)) where
+  open Code code public
 
-private
-  traverseAll : ∀ {a p p′} {A : Set a} {P : A → Set p} {P′ : A → Set p′} → (∀ {x} → P x → Maybe (P′ x)) → {xs : List A} → All P xs → Maybe (All P′ xs)
-  traverseAll f [] = just []
-  traverseAll f (px ∷ ap) with f px | traverseAll f ap
-  traverseAll f (px ∷ ap) | just px′ | just ap′ = just (px′ ∷ ap′)
-  traverseAll f (px ∷ ap) | _ | _ = nothing
+  field
+    rawStruct : RawStruct K c ℓ
+    Π : Properties code
 
-subΠ : ∀ {k k′} {code : Code k} {code′ : Code k′} →
-  let open Code code using (K)
-      open Code code′ using () renaming (K to K′)
-  in (∀ {n} → K′ n → Maybe (K n)) →
-     Properties code → Properties code′ → Properties code′
-hasProperty (subΠ f Π₀ Π₁) (π , κs) = hasProperty Π₁ (π , κs) ∨ satUnder
-  where
-    satUnder : Bool
-    satUnder with traverseAll f κs
-    satUnder | just κs′ = hasProperty Π₀ (π , κs′)
-    satUnder | nothing = false
+  open RawStruct rawStruct public
 
-data MagmaK : ℕ → Set where
-  ∙ : MagmaK 2
+  open Properties Π public
 
-data MonoidK : ℕ → Set where
-  ε : MonoidK 0
-  ∙ : MonoidK 2
+  field
+    reify : ∀ {π} → π ∈ₚ Π → ⟦ π ⟧P rawStruct
 
-data BimonoidK : ℕ → Set where
-  0# 1# : BimonoidK 0
-  + * : BimonoidK 2
+  Has : Property K → Set
+  Has π = π ∈ₚ Π
 
-module _ where
-  open Code
-  open Nat using (suc)
+  record HasEach (Π′ : Properties code) : Set where
+    constructor mkHasEach
+    field
+      getHasEach : ⊨ (Π′ ⇒ₚ Π)
 
-  -- TODO: automate proofs like these.
+  open HasEach
 
-  magmaCode : Code _
-  K magmaCode = MagmaK
-  boundAt magmaCode 2 = 1
-  boundAt magmaCode _ = 0
-  isFiniteAt magmaCode 0 = enumerable-isFiniteSet [] λ ()
-  isFiniteAt magmaCode 1 = enumerable-isFiniteSet [] λ ()
-  isFiniteAt magmaCode (suc (suc (suc _))) = enumerable-isFiniteSet [] λ ()
-  isFiniteAt magmaCode 2 = enumerable-isFiniteSet (∙ ∷ []) λ {∙ → here ≡.refl}
+  HasList : List (Property K) → Set
+  HasList = HasEach ∘ fromList
 
-  monoidCode : Code _
-  K monoidCode = MonoidK
-  boundAt monoidCode 0 = 1
-  boundAt monoidCode 2 = 1
-  boundAt monoidCode _ = 0
-  isFiniteAt monoidCode 0 = enumerable-isFiniteSet (ε ∷ []) λ {ε → here ≡.refl}
-  isFiniteAt monoidCode 1 = enumerable-isFiniteSet [] λ ()
-  isFiniteAt monoidCode 2 = enumerable-isFiniteSet (∙ ∷ []) λ {∙ → here ≡.refl}
-  isFiniteAt monoidCode (suc (suc (suc _))) = enumerable-isFiniteSet [] λ ()
+  use : ∀ π ⦃ hasπ : Has π ⦄ → ⟦ π ⟧P rawStruct
+  use _ ⦃ hasπ ⦄ = reify hasπ
 
-  bimonoidCode : Code _
-  K bimonoidCode = BimonoidK
-  boundAt bimonoidCode 0 = 2
-  boundAt bimonoidCode 2 = 2
-  boundAt bimonoidCode _ = 0
-  isFiniteAt bimonoidCode 0 = enumerable-isFiniteSet (0# ∷ 1# ∷ []) λ {0# → here ≡.refl; 1# → there (here ≡.refl)}
-  isFiniteAt bimonoidCode 1 = enumerable-isFiniteSet [] λ ()
-  isFiniteAt bimonoidCode 2 = enumerable-isFiniteSet (+ ∷ * ∷ []) λ {+ → here ≡.refl; * → there (here ≡.refl)}
-  isFiniteAt bimonoidCode (suc (suc (suc _))) = enumerable-isFiniteSet [] λ ()
+  from : ∀ Π′ π ⦃ hasΠ′ : HasEach Π′ ⦄ ⦃ hasπ : π ∈ₚ Π′ ⦄ → ⟦ π ⟧P rawStruct
+  from _ _ ⦃ hasΠ′ ⦄ ⦃ hasπ ⦄ = use _ ⦃ Has⇒ₚ hasπ (getHasEach hasΠ′) ⦄
 
+  from′ : ∀ πs π ⦃ hasπs : HasList πs ⦄ ⦃ hasπ : π ∈ₚ fromList πs ⦄ → ⟦ π ⟧P rawStruct
+  from′ _ = from _
 
-+-part : ∀ {n} → BimonoidK n → Maybe (MonoidK n)
-+-part 0# = just ε
-+-part + = just ∙
-+-part _ = nothing
-
-*-part : ∀ {n} → BimonoidK n → Maybe (MonoidK n)
-*-part 1# = just ε
-*-part * = just ∙
-*-part _ = nothing
-
--- TODO: Allow specifying properties as a list, using decidable equality to
--- build the functions.
-
-isSemigroup : Properties magmaCode
-isSemigroup = properties λ
-  { (associative , ∙ ∷ []) → true
-  ; _ → false}
-
-isMonoid : Properties monoidCode
-isMonoid = subΠ (λ {∙ → just ∙; _ → nothing}) isSemigroup (properties λ
-  { (leftIdentity , ε ∷ ∙ ∷ []) → true
-  ; (rightIdentity , ε ∷ ∙ ∷ []) → true
-  ; _ → false
-  })
-
-isCommutativeMonoid : Properties monoidCode
-isCommutativeMonoid = subΠ just isMonoid (properties λ
-  { (commutative , ∙ ∷ []) → true
-  ; _ → false
-  })
-
-isSemiring : Properties bimonoidCode
-isSemiring =
-  subΠ +-part isCommutativeMonoid (
-  subΠ *-part isMonoid (properties λ
-  { (leftZero , 0# ∷ * ∷ []) → true
-  ; (rightZero , 0# ∷ * ∷ []) → true
-  ; (distributesOverˡ , * ∷ + ∷ []) → true
-  ; (distributesOverʳ , * ∷ + ∷ []) → true
-  ; _ → false
-  }))
-
--- module Into where
---   open Algebra using (Semigroup; Monoid; CommutativeMonoid)
-
---   semigroup : ∀ {c ℓ} {Π : Properties magmaCode} ⦃ hasSemigroup : HasAll (Π ⇒ₚ isSemigroup) ⦄ → Struct c ℓ Π → Semigroup c ℓ
---   semigroup struct = record
---     { _∙_ = ⟦ ∙ ⟧
---     ; isSemigroup = record
---       { isEquivalence = isEquivalence
---       ; assoc = {!use (associative ∙)!}
---       ; ∙-cong = {!!}
---       }
---     }
---     where open Struct struct
-
---   monoid : ∀ {c ℓ} {props} ⦃ _ : isMonoid ⊆ props ⦄ → Dagma props c ℓ → Monoid c ℓ
---   monoid ⦃ mon ⦄ dagma = record
---     { isMonoid = record
---       { isSemigroup = S.isSemigroup
---       ; identity = proj₂ (from isMonoid hasIdentity)
---       }
---     }
---     where
---       open Dagma dagma
---       module S = Semigroup (semigroup (dagma ↓M isMonoid ↓M isSemigroup))
-
---   commutativeMonoid : ∀ {c ℓ} {props} ⦃ _ : isCommutativeMonoid ⊆ props ⦄ → Dagma props c ℓ → CommutativeMonoid c ℓ
---   commutativeMonoid dagma = record
---     { isCommutativeMonoid = record
---       { isSemigroup = S.isSemigroup
---       ; leftIdentity = proj₁ (proj₂ (from isCommutativeMonoid hasIdentity))
---       ; comm = from isCommutativeMonoid commutative
---       }
---     }
---     where
---       open Dagma dagma
---       module S = Semigroup (semigroup (dagma ↓M isCommutativeMonoid ↓M isSemigroup))
-
---   -- semiring
+  -- subStruct : ∀ {k′} (code′ : ∀ {n} → K n → Set k′) → Struct (λ n → Σ (K n) K′) c ℓ
