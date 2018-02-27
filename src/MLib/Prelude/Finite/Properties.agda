@@ -6,7 +6,7 @@ open import MLib.Prelude.FromStdlib
 import MLib.Prelude.Fin as Fin
 open Fin using (Fin)
 
-open import Relation.Binary using (Decidable)
+import Relation.Binary as B using (Decidable)
 
 open import Function.LeftInverse using (LeftInverse; _↞_) renaming (_∘_ to _ⁱ∘_)
 open import Function.Inverse using (Inverse; _↔_)
@@ -127,7 +127,7 @@ module _ {c ℓ} (icMonoid : IdempotentCommutativeMonoid c ℓ) where
 
 -- Equality between members of a finite set is decidable.
 
-_≟_ : Decidable _≈_
+_≟_ : B.Decidable _≈_
 x ≟ y with toIx x Fin.≟ toIx y
 x ≟ y | yes p = yes (
   begin
@@ -137,3 +137,4 @@ x ≟ y | yes p = yes (
     y                ∎)
   where open EqReasoning setoid
 x ≟ y | no ¬p = no (¬p ∘ cong (LeftInverse.to ontoFin))
+

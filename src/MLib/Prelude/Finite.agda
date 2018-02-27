@@ -5,16 +5,22 @@ import MLib.Prelude.Fin as Fin
 import MLib.Prelude.Fin.Pieces as P
 open import MLib.Prelude.RelProps
 open Fin using (Fin)
+open import Data.Bool using (if_then_else_)
 
 open import Data.List.All as All using (All; []; _∷_) hiding (module All)
 open import Data.List.Any as Any using (Any; here; there) hiding (module Any)
 import Data.List.Any.Membership as Membership
 import Data.List.Any.Membership.Propositional as PropMembership
 
+import Relation.Binary.Indexed as I
+import Relation.Unary as U using (Decidable)
 open import Function.LeftInverse using (LeftInverse; _↞_) renaming (_∘_ to _ⁱ∘_)
 open import Function.Inverse using (Inverse; _↔_)
 open import Function.Equality as FE using (_⟶_; _⟨$⟩_; cong)
 open import Function.Related using () renaming (module EquationalReasoning to RelReasoning)
+
+import Data.Product.Relation.SigmaPointwise as ΣR
+import Data.Product.Relation.SigmaPropositional as OverΣ
 
 open Algebra using (IdempotentCommutativeMonoid)
 
@@ -121,21 +127,21 @@ extendFinite finiteSet ontoF = record
 
 -- Given a family of finite sets, indexed by a finite set, the sum over the entire family is finite.
 
-module _ {a} {A : Set a} {N} (F : IsFiniteSetoid (≡.setoid A) N) where
+module _ {c} {A : Set c} {N} (isFiniteSet : IsFiniteSet A N) where
   private
-    finiteSet : FiniteSet _ _
-    finiteSet = record { isFiniteSetoid = F }
-
+    finiteSet : FiniteSet c c
+    finiteSet = record { isFiniteSetoid = isFiniteSet }
     module F = FiniteSet finiteSet
 
     Σᶠ : ∀ {p} → (A → Set p) → Set p
     Σᶠ P = ∃ (P ∘ lookup F.enumTable)
 
-  module _ {p} {P : A → Set p} {boundAt : A → ℕ} (finiteAt : ∀ x → IsFiniteSet (P x) (boundAt x)) where
+  module _ {p ℓ} (finiteAt : A → FiniteSet p ℓ) where
     private
-      module PW x = IsFiniteSetoid (finiteAt x)
+      module PW x = FiniteSet (finiteAt x)
+      open PW using () renaming (Carrier to P)
 
-      pieces : P.Pieces A boundAt
+      pieces : P.Pieces A PW.N
       pieces = record
         { numPieces = N
         ; pieces = F.enumTable
@@ -143,35 +149,55 @@ module _ {a} {A : Set a} {N} (F : IsFiniteSetoid (≡.setoid A) N) where
 
       open P.Pieces pieces hiding (pieces)
 
-    Σ-isFiniteSet : IsFiniteSet (Σ A P) totalSize
-    Σ-isFiniteSet = record
-      { ontoFin =
-        ∃ P                         ∼⟨ Σ-↞′ F.ontoFin ⟩
-        Σᶠ P                        ∼⟨ intoCoords ⟩
-        Σ (Fin N) (Fin ∘ sizeAt)    ↔⟨ P.asPiece pieces ⟩
-        Fin totalSize               ∎
+    Σ-isFiniteSetoid : IsFiniteSetoid (OverΣ.setoid PW.setoid) totalSize
+    Σ-isFiniteSetoid = record
+      { ontoFin
+        =  Inverse.left-inverse (P.asPiece pieces)
+        ⁱ∘ intoCoords
+        ⁱ∘ Σ-↞′ {B-setoid = PW.setoid} F.ontoFin
       }
       where
-        open RelReasoning
+        P-setoidᶠ : Fin N → Setoid _ _
+        P-setoidᶠ i = record
+          { Carrier = P (F.fromIx i)
+          ; _≈_ = PW._≈_ _
+          ; isEquivalence = record
+            { refl = PW.refl _
+            ; sym = PW.sym _
+            ; trans = PW.trans _
+            }
+          }
+
+        ΣᶠP-setoid = OverΣ.setoid P-setoidᶠ
+
+        open Setoid ΣᶠP-setoid using ()
+          renaming (_≈_ to _≈ᶠ_)
 
         to : Σᶠ P → Σ (Fin N) (Fin ∘ sizeAt)
         to (_ , px) = _ , PW.toIx _ px
 
+        to-cong : ∀ {x y} → x ≈ᶠ y → to x ≡ to y
+        to-cong (≡.refl , q) = OverΣ.to-≡ (≡.refl , cong (LeftInverse.to (PW.ontoFin _)) q)
+
         from : Σ (Fin N) (Fin ∘ sizeAt) → Σᶠ P
         from (i , j) = _ , PW.fromIx _ j
 
-        left-inverse-of : ∀ x → from (to x) ≡ x
-        left-inverse-of (i , x) = ≡.cong (i ,_) (PW.fromIx-toIx _ _)
+        left-inverse-of : ∀ x → from (to x) ≈ᶠ x
+        left-inverse-of (i , x) = ≡.refl , PW.fromIx-toIx _ _
 
-        intoCoords : Σᶠ P ↞ Σ (Fin N) (Fin ∘ sizeAt)
+        intoCoords : LeftInverse ΣᶠP-setoid (≡.setoid (Σ (Fin N) (Fin ∘ sizeAt)))
         intoCoords = record
-          { to = ≡.→-to-⟶ to
+          { to = record { _⟨$⟩_ = to ; cong = to-cong }
           ; from = ≡.→-to-⟶ from
           ; left-inverse-of = left-inverse-of
           }
 
+    Σ-finiteSet : FiniteSet _ _
+    Σ-finiteSet = record { isFiniteSetoid = Σ-isFiniteSetoid }
 
--- TODO: Recast as an instance of Σ-isFiniteSet
+
+-- TODO: Prove dependent function spaces with finite domain and codomain are
+-- finite sets, and recast as an instance of that.
 
 module _ {a p} {A : Set a} {P : A → Set p} (boundAt : A → ℕ) (finiteAt : ∀ x → IsFiniteSet (P x) (boundAt x)) where
   private
@@ -181,8 +207,8 @@ module _ {a p} {A : Set a} {P : A → Set p} (boundAt : A → ℕ) (finiteAt : �
   finiteAllSize = List.product ∘ List.map boundAt
 
 
-  finiteAll : (xs : List A) → IsFiniteSet (All P xs) _
-  finiteAll _ = record
+  All-isFiniteSet : (xs : List A) → IsFiniteSet (All P xs) _
+  All-isFiniteSet _ = record
     { ontoFin = record
       { to = ≡.→-to-⟶ to
       ; from = ≡.→-to-⟶ from
@@ -221,3 +247,49 @@ module _ {a p} {A : Set a} {P : A → Set p} (boundAt : A → ℕ) (finiteAt : �
               | PW.fromIx-toIx _ px
               | left-inverse-of ap
               = ≡.refl
+
+  All-finiteSet : List A → FiniteSet _ _
+  All-finiteSet xs = record { isFiniteSetoid = All-isFiniteSet xs }
+
+
+1-Truncate : ∀ {c ℓ} (setoid : Setoid c ℓ) → Setoid _ _
+1-Truncate setoid = record
+  { Carrier = Carrier
+  ; _≈_ = λ _ _ → ⊤
+  ; isEquivalence = record { refl = _ ; sym = _ ; trans = _ }
+  }
+  where open Setoid setoid
+
+module DecFinite {a p} {A : Set a} (P : A → Set p) (decP : U.Decidable P) where
+  P-setoid : A → Setoid _ _
+  P-setoid = 1-Truncate ∘ ≡.setoid ∘ P
+
+  P-size : A → ℕ
+  P-size x = if ⌊ decP x ⌋ then 1 else 0
+
+  P-isFinite : ∀ x → IsFiniteSetoid (P-setoid x) (P-size x)
+  P-isFinite x with decP x
+  P-isFinite x | yes p = record
+    { ontoFin = record
+      { to = record
+        { _⟨$⟩_ = λ _ → Fin.zero ; cong = λ _ → ≡.refl }
+        ; from = ≡.→-to-⟶ λ _ → p
+        ; left-inverse-of = _
+      }
+    }
+  P-isFinite x | no ¬p = record
+    { ontoFin = record
+      { to = record { _⟨$⟩_ = ⊥-elim ∘ ¬p ; cong = λ {x} → ⊥-elim (¬p x) }
+      ; from = ≡.→-to-⟶ λ ()
+      ; left-inverse-of = _
+      }
+    }
+
+  Decidable-finite : A → FiniteSet p _
+  Decidable-finite x = record { isFiniteSetoid = P-isFinite x }
+
+module _ {c} {A : Set c} {N} (isFiniteSet : IsFiniteSet A N) {p} (P : A → Set p) (decP : U.Decidable P) where
+  open IsFiniteSetoid isFiniteSet
+
+  subsetFinite : FiniteSet _ _
+  subsetFinite = Σ-finiteSet isFiniteSet (DecFinite.Decidable-finite _ decP)

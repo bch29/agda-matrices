@@ -7,6 +7,7 @@ import MLib.Prelude.Finite.Properties as FiniteProps
 open import MLib.Algebra.PropertyCode.RawStruct
 open import MLib.Algebra.Instances
 
+import Relation.Unary as U using (Decidable)
 open import Relation.Binary as B using (Setoid)
 
 open List using (_∷_; [])
@@ -213,17 +214,18 @@ finitePropKind = record { isFiniteSetoid = PropKind-IsFiniteSet }
 --  Subsets of properties over a particular operator code type
 --------------------------------------------------------------------------------
 
-record Code k : Set (sucˡ k) where
+record Code k ℓ : Set (sucˡ (k ⊔ˡ ℓ)) where
   field
-    K : ℕ → Set k
-    boundAt : ℕ → ℕ
-    isFiniteAt : ∀ n → IsFiniteSet (K n) (boundAt n)
+    finiteAt : ℕ → FiniteSet k ℓ
+
+  module K n = FiniteSet (finiteAt n)
+  open K using () renaming (Carrier to K; N to boundAt; isFiniteSetoid to isFiniteAt)
 
   module Property where
     finiteSet : FiniteSet _ _
     finiteSet = record
       { isFiniteSetoid =
-          Σ-isFiniteSet PropKind-IsFiniteSet (finiteAll boundAt isFiniteAt ∘ opArities)
+          Σ-isFiniteSetoid PropKind-IsFiniteSet (All-finiteSet boundAt isFiniteAt ∘ opArities)
       }
 
     open FiniteSet finiteSet public
@@ -231,6 +233,13 @@ record Code k : Set (sucˡ k) where
 
   allAppliedProperties : List (Property K)
   allAppliedProperties = FiniteSet.enumerate Property.finiteSet
+
+  subCode : ∀ {p} (P : ∀ {n} → K n → Set p) → (∀ {n} → U.Decidable (P {n})) → Code {!!}
+  subCode P decP = record
+    { K = λ n → ∃ (P {n})
+    ; boundAt = {!!}
+    ; isFiniteAt = {!!}
+    }
 
 
 record Properties {k} (code : Code k) : Set k where
@@ -292,11 +301,11 @@ module _ {k} {code : Code k} where
 
     hasAll-true : hasAll Π ≡ true
     hasAll-true = begin
-      hasAll Π                                   ≡⟨⟩
+      hasAll Π                                  ≡⟨⟩
       Property.foldMap icm (hasProperty Π)      ≡⟨ Property.foldMap-cong icm hasProperty-const  ⟩
       Property.foldMap icm (λ _ → true)         ≡⟨ proj₁ (IdempotentCommutativeMonoid.identity icm) _ ⟩
       true ∧ Property.foldMap icm (λ _ → true)  ≡⟨ Property.foldMap-const icm ⟩
-      true                                       ∎
+      true                                      ∎
 
   ⊨→⊢ : {Π : Properties code} → ⊨ Π → ⊢ Π
   ⊨→⊢ {Π} t π = fromTruth (Equivalence.from T-≡ ⟨$⟩ hasProperty-true)
@@ -314,7 +323,7 @@ module _ {k} {code : Code k} where
       hasProperty-true = begin
         hasProperty Π π            ≡⟨ ≡.sym (proj₂ ∧.identity _ ) ⟩
         hasProperty Π π ∧ true     ≡⟨ ∧.∙-cong (≡.refl {x = hasProperty Π π}) (≡.sym hasAll-true)  ⟩
-        hasProperty Π π ∧ hasAll Π ≡⟨ Property.enumTable-complete icm (≡.→-to-⟶ (hasProperty Π)) π ⟩
+        hasProperty Π π ∧ hasAll Π ≡⟨ Property.enumTable-complete icm (record { _⟨$⟩_ = hasProperty Π ; cong = λ {(≡.refl , ≡.refl) → ≡.refl}}) π ⟩
         hasAll Π                   ≡⟨ hasAll-true ⟩
         true                       ∎
 
@@ -341,7 +350,7 @@ module _ {k} {code : Code k} where
   π-∈ₚ-singleton : ∀ {π} → π ∈ₚ singleton π
   truth (π-∈ₚ-singleton {π}) with π Property.≟ π
   truth (π-∈ₚ-singleton {π}) | yes p = _
-  truth (π-∈ₚ-singleton {π}) | no ¬p = ¬p ≡.refl
+  truth (π-∈ₚ-singleton {π}) | no ¬p = ¬p (OverΣ.refl ≡.refl)
 
   _⇒ₚ_ : Properties code → Properties code → Properties code
   hasProperty (Π₁ ⇒ₚ Π₂) π = not (hasProperty Π₁ π) ∨ hasProperty Π₂ π

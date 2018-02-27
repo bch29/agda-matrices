@@ -7,6 +7,7 @@ open import MLib.Algebra.Instances
 open import MLib.Algebra.PropertyCode.RawStruct public
 open import MLib.Algebra.PropertyCode.Core public
 
+import Relation.Unary as U using (Decidable)
 open import Relation.Binary as B using (Setoid)
 
 open List using (_∷_; [])
@@ -52,4 +53,5 @@ record Struct {k} (code : Code k) c ℓ : Set (sucˡ (c ⊔ˡ ℓ ⊔ˡ k)) wher
   from′ : ∀ πs π ⦃ hasπs : HasList πs ⦄ ⦃ hasπ : π ∈ₚ fromList πs ⦄ → ⟦ π ⟧P rawStruct
   from′ _ = from _
 
-  -- subStruct : ∀ {k′} (code′ : ∀ {n} → K n → Set k′) → Struct (λ n → Σ (K n) K′) c ℓ
+  -- subStruct : ∀ {p} (P : ∀ {n} → K n → Set p) (decP : ∀ {n} → U.Decidable (P {n})) → Struct (λ n → Σ (K n) P) c ℓ
+  -- subStruct P decP = ?

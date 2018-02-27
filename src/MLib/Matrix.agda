@@ -51,8 +51,8 @@ module _ {c ℓ} (struct : Struct bimonoidCode c ℓ) where
     ⊕-cong : Congruent₂ _⊕_
     ⊕-cong p q = λ i j → S.congⁿ + (p i j ∷ q i j ∷ [])
 
-    assoc : ⦃ _ : HasList (associative on + ∷ []) ⦄ → Associative _⊕_
-    assoc A B C i j = from′ (associative on + ∷ []) (associative on +) (A i j) (B i j) (C i j)
+    assoc : ⦃ _ : Has (associative on +) ⦄ → Associative _⊕_
+    assoc A B C i j = use (associative on +) (A i j) (B i j) (C i j)
 
     0● : Matrix S m n
     0● _ _ = ⟦ 0# ⟧
