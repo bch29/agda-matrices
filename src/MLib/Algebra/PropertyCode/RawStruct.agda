@@ -90,15 +90,14 @@ record RawStruct {k} (K : ℕ → Set k) c ℓ : Set (sucˡ (c ⊔ˡ ℓ ⊔ˡ k
 
   open IsRawStruct isRawStruct public
 
-  -- If we pick out a subset of the operators in the structure, that too forms a
-  -- structure.
-  subRawStruct : ∀ {k′} (K′ : ∀ {n} → K n → Set k′) → RawStruct (λ n → Σ (K n) K′) c ℓ
-  subRawStruct K′ = record
+  -- Form a structure over a new kind of operator by injecting from it.
+  subRawStruct : ∀ {k′} {K′ : ℕ → Set k′} → (∀ {n} → K′ n → K n) → RawStruct K′ c ℓ
+  subRawStruct liftK = record
     { Carrier = Carrier
     ; _≈_ = _≈_
-    ; appOp = appOp ∘ proj₁
+    ; appOp = appOp ∘ liftK
     ; isRawStruct = record
       { isEquivalence = isEquivalence
-      ; congⁿ = congⁿ ∘ proj₁
+      ; congⁿ = congⁿ ∘ liftK
       }
     }

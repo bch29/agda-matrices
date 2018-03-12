@@ -6,13 +6,17 @@ open import MLib.Algebra.Instances
 
 open import MLib.Algebra.PropertyCode.RawStruct public
 open import MLib.Algebra.PropertyCode.Core public
+open import MLib.Algebra.PropertyCode public
 
 open import Relation.Binary as B using (Setoid)
 
 open List using (_∷_; [])
-open import Data.List.All as All using (All; _∷_; []) public
 open import Data.List.Any using (Any; here; there)
 open import Data.Bool using (_∨_)
+open import Data.Vec.Relation.InductivePointwise using (_∷_; [])
+
+open import Function.LeftInverse using (LeftInverse; _↞_)
+open import Function.Equality using (_⟨$⟩_) renaming (cong to feCong)
 
 open import Category.Applicative
 
@@ -132,30 +136,74 @@ isSemiring =
   ∷ []
   ))
 
--- module Into where
---   open Algebra using (Semigroup; Monoid; CommutativeMonoid)
+module _ {k k′} {code : Code k} {code′ : Code k′} where
+  private
+    module K = Code code
+    module K′ = Code code′
+    open K using (K)
+    open K′ using () renaming (K to K′)
 
---   semigroup : ∀ {c ℓ} {Π : Properties magmaCode} ⦃ hasSemigroup : HasAll (Π ⇒ₚ isSemigroup) ⦄ → Struct c ℓ Π → Semigroup c ℓ
---   semigroup struct = record
---     { _∙_ = ⟦ ∙ ⟧
---     ; isSemigroup = record
---       { isEquivalence = isEquivalence
---       ; assoc = {!use (associative ∙)!}
---       ; ∙-cong = {!!}
---       }
---     }
---     where open Struct struct
+    liftK : (∀ {n} → K′ n → Maybe (K n)) → {ns : List ℕ} → All K′ ns → Maybe (All K ns)
+    liftK f [] = just []
+    liftK f (px ∷ ak) with f px | liftK f ak
+    liftK f (px ∷ ak) | just px′ | just ak′ = just (px′ ∷ ak′)
+    liftK f (px ∷ ak) | _ | _ = nothing
 
---   monoid : ∀ {c ℓ} {props} ⦃ _ : isMonoid ⊆ props ⦄ → Dagma props c ℓ → Monoid c ℓ
---   monoid ⦃ mon ⦄ dagma = record
---     { isMonoid = record
---       { isSemigroup = S.isSemigroup
---       ; identity = proj₂ (from isMonoid hasIdentity)
---       }
---     }
---     where
---       open Dagma dagma
---       module S = Semigroup (semigroup (dagma ↓M isMonoid ↓M isSemigroup))
+    liftπ : (∀ {n} → K′ n → Maybe (K n)) → Property K′ → Maybe (Property K)
+    liftπ f (π , κs) with liftK f κs
+    liftπ f (π , κs) | just κs′ = just (π , κs′)
+    liftπ f (π , κs) | nothing = nothing
+
+  liftΠ : (∀ {n} → K′ n → Maybe (K n)) → Properties code → Properties code′
+  hasProperty (liftΠ f Π) π with liftπ f π
+  hasProperty (liftΠ f Π) π | just π′ = hasProperty Π π′
+  hasProperty (liftΠ f Π) π | nothing = false
+
+module _ where
+  open LeftInverse
+
+  magma↞monoid : ∀ {n} → Maybe (MagmaK n) ↞ Maybe (MonoidK n)
+  magma↞monoid .to ._⟨$⟩_ (just ∙) = just ∙
+  magma↞monoid .to ._⟨$⟩_ nothing = nothing
+  magma↞monoid .to .feCong ≡.refl = ≡.refl
+  magma↞monoid .from ._⟨$⟩_ (just ε) = nothing
+  magma↞monoid .from ._⟨$⟩_ (just ∙) = just ∙
+  magma↞monoid .from ._⟨$⟩_ nothing = nothing
+  magma↞monoid .from .feCong ≡.refl = ≡.refl
+  magma↞monoid .left-inverse-of (just ∙) = ≡.refl
+  magma↞monoid .left-inverse-of nothing = ≡.refl
+
+module Into {c ℓ} where
+  open Algebra using (Semigroup; Monoid; CommutativeMonoid)
+
+  module _ (struct : Struct magmaCode c ℓ) where
+    open Struct struct
+
+    semigroup : ∀ {Π : Properties magmaCode} ⦃ hasSemigroup : HasEach isSemigroup ⦄ → Semigroup _ _
+    semigroup = record
+      { _∙_ = ⟦ ∙ ⟧
+      ; isSemigroup = record
+        { isEquivalence = isEquivalence
+        ; assoc = from isSemigroup (associative on ∙)
+        ; ∙-cong = λ p q → congⁿ ∙ (p ∷ q ∷ [])
+        }
+      }
+
+  -- module _ (struct : Struct monoidCode c ℓ) where
+  --   open Struct struct
+
+  --   monoid : ∀ {c ℓ} ⦃ _ : HasEach isMonoid ⦄ → Monoid c ℓ
+  --   monoid ⦃ mon ⦄ = record
+  --     { isMonoid = record
+  --       { isSemigroup = {!!}
+  --       ; identity = {!!}
+  --       }
+  --     }
+  --     where
+  --       magmaPart : Struct (subCode magma↞monoid) c ℓ
+  --       magmaPart = subStruct magma↞monoid
+
+  --       module S = Semigroup (semigroup {!!})
 
 --   commutativeMonoid : ∀ {c ℓ} {props} ⦃ _ : isCommutativeMonoid ⊆ props ⦄ → Dagma props c ℓ → CommutativeMonoid c ℓ
 --   commutativeMonoid dagma = record

@@ -117,12 +117,17 @@ module _ {a} {A : Set a} where
 
 -- Given a function with a left inverse from some 'A' to a finite set, 'A' must also be finite.
 
-extendFinite : ∀ {c ℓ c′ ℓ′} {S : Setoid c ℓ} (F : FiniteSet c′ ℓ′) → LeftInverse S (FiniteSet.setoid F) → IsFiniteSetoid S (FiniteSet.N F)
-extendFinite finiteSet ontoF = record
+extendedIsFinite : ∀ {c ℓ c′ ℓ′} {S : Setoid c ℓ} (F : FiniteSet c′ ℓ′) → LeftInverse S (FiniteSet.setoid F) → IsFiniteSetoid S (FiniteSet.N F)
+extendedIsFinite finiteSet ontoF = record
   { ontoFin = ontoFin ⁱ∘ ontoF
   }
   where
     open FiniteSet finiteSet using (ontoFin)
+
+extendFinite : ∀ {c ℓ c′ ℓ′} {S : Setoid c ℓ} (F : FiniteSet c′ ℓ′) → LeftInverse S (FiniteSet.setoid F) → FiniteSet _ _
+extendFinite finiteSet ontoF = record
+  { isFiniteSetoid = extendedIsFinite finiteSet ontoF
+  }
 
 
 -- Given a family of finite sets, indexed by a finite set, the sum over the entire family is finite.
@@ -195,22 +200,58 @@ module _ {c} {A : Set c} {N} (isFiniteSet : IsFiniteSet A N) where
     Σ-finiteSet : FiniteSet _ _
     Σ-finiteSet = record { isFiniteSetoid = Σ-isFiniteSetoid }
 
+module All′ {a} {A : Set a} where
+  module _ {p ℓ} (setoid : A → Setoid p ℓ) where
+    module P′ x = Setoid (setoid x)
+    module P′′ {x} = P′ x
+    open P′ using () renaming (Carrier to P)
+    open P′′ using (_≈_)
+
+    data PW : {xs : List A} → All P xs → All P xs → Set (p ⊔ˡ ℓ) where
+      [] : PW [] []
+      _∷_ : ∀ {x xs} {px py : P x} {apx apy : All P xs} → px ≈ py → PW apx apy → PW (px ∷ apx) (py ∷ apy)
+
+    PW-setoid : List A → Setoid _ _
+    Setoid.Carrier (PW-setoid xs) = All P xs
+    Setoid._≈_ (PW-setoid xs) = PW
+    IsEquivalence.refl (Setoid.isEquivalence (PW-setoid .[])) {[]} = []
+    IsEquivalence.refl (Setoid.isEquivalence (PW-setoid .(_ ∷ _))) {px ∷ ap} =
+      P′′.refl ∷ IsEquivalence.refl (Setoid.isEquivalence (PW-setoid _))
+    IsEquivalence.sym (Setoid.isEquivalence (PW-setoid .[])) [] = []
+    IsEquivalence.sym (Setoid.isEquivalence (PW-setoid .(_ ∷ _))) (p ∷ q) =
+      P′′.sym p ∷ IsEquivalence.sym (Setoid.isEquivalence (PW-setoid _)) q
+    IsEquivalence.trans (Setoid.isEquivalence (PW-setoid .[])) [] [] = []
+    IsEquivalence.trans (Setoid.isEquivalence (PW-setoid .(_ ∷ _))) (p ∷ q) (p′ ∷ q′) =
+      P′′.trans p p′ ∷ IsEquivalence.trans (Setoid.isEquivalence (PW-setoid _)) q q′
+
+
+  module _ {p} (P : A → Set p) where
+    PW-≡ : ∀ {xs} {apx apy : All P xs} → PW (≡.setoid ∘ P) apx apy → apx ≡ apy
+    PW-≡ [] = ≡.refl
+    PW-≡ (p ∷ q) = ≡.cong₂ _∷_ p (PW-≡ q)
+
 
 -- TODO: Prove dependent function spaces with finite domain and codomain are
 -- finite sets, and recast as an instance of that.
 
-module _ {a p} {A : Set a} {P : A → Set p} (boundAt : A → ℕ) (finiteAt : ∀ x → IsFiniteSet (P x) (boundAt x)) where
+module _ {a p ℓ} {A : Set a} (finiteAt : A → FiniteSet p ℓ) where
   private
-    module PW x = IsFiniteSetoid (finiteAt x)
+    module PW x = FiniteSet (finiteAt x)
+    module PW′ {x} = PW x
+    open PW using () renaming (Carrier to P; N to boundAt)
+    open PW′ using (_≈_)
+
+    All≈ = All′.PW PW.setoid
+    All-setoid = All′.PW-setoid PW.setoid
+    open All′.PW PW.setoid
 
   finiteAllSize : List A → ℕ
   finiteAllSize = List.product ∘ List.map boundAt
 
-
-  All-isFiniteSet : (xs : List A) → IsFiniteSet (All P xs) _
-  All-isFiniteSet _ = record
+  All-isFiniteSetoid : (xs : List A) → IsFiniteSetoid (All-setoid xs) _
+  All-isFiniteSetoid _ = record
     { ontoFin = record
-      { to = ≡.→-to-⟶ to
+      { to = record { _⟨$⟩_ = to ; cong = to-cong }
       ; from = ≡.→-to-⟶ from
       ; left-inverse-of = left-inverse-of
       }
@@ -234,22 +275,23 @@ module _ {a p} {A : Set a} {P : A → Set p} (boundAt : A → ℕ) (finiteAt : �
       to [] = Fin.zero
       to (_∷_ {x} {xs} px ap) = joinProd (PW.toIx _ px , to ap)
 
+      to-cong : ∀ {xs}{apx apy : All P xs} → All≈ apx apy → to apx ≡ to apy
+      to-cong [] = ≡.refl
+      to-cong (p ∷ q) = ≡.cong₂ (λ i j → joinProd (i , j)) (cong (LeftInverse.to PW′.ontoFin) p) (to-cong q)
+
       from : ∀ {xs} → Fin (finiteAllSize xs) → All P xs
       from {List.[]} _ = []
       from {x List.∷ xs} i =
         (PW.fromIx _ (proj₁ (splitProd i))) ∷
         from {xs} (proj₂ (splitProd {boundAt x} i))
 
-      left-inverse-of : ∀ {xs} (ap : All P xs) → from (to ap) ≡ ap
-      left-inverse-of [] = ≡.refl
-      left-inverse-of (px ∷ ap)
-        rewrite splitProd-joinProd (PW.toIx _ px , to ap)
-              | PW.fromIx-toIx _ px
-              | left-inverse-of ap
-              = ≡.refl
+      left-inverse-of : ∀ {xs} (ap : All P xs) → All≈ (from (to ap)) ap
+      left-inverse-of [] = Setoid.refl (All-setoid _)
+      left-inverse-of (px ∷ ap) rewrite splitProd-joinProd (PW.toIx _ px , to ap) =
+        PW′.fromIx-toIx px ∷ left-inverse-of ap
 
   All-finiteSet : List A → FiniteSet _ _
-  All-finiteSet xs = record { isFiniteSetoid = All-isFiniteSet xs }
+  All-finiteSet xs = record { isFiniteSetoid = All-isFiniteSetoid xs }
 
 
 1-Truncate : ∀ {c ℓ} (setoid : Setoid c ℓ) → Setoid _ _
@@ -260,7 +302,7 @@ module _ {a p} {A : Set a} {P : A → Set p} (boundAt : A → ℕ) (finiteAt : �
   }
   where open Setoid setoid
 
-module DecFinite {a p} {A : Set a} (P : A → Set p) (decP : U.Decidable P) where
+module DecFinite {a p} {A : Set a} {P : A → Set p} (decP : U.Decidable P) where
   P-setoid : A → Setoid _ _
   P-setoid = 1-Truncate ∘ ≡.setoid ∘ P
 
@@ -288,8 +330,11 @@ module DecFinite {a p} {A : Set a} (P : A → Set p) (decP : U.Decidable P) wher
   Decidable-finite : A → FiniteSet p _
   Decidable-finite x = record { isFiniteSetoid = P-isFinite x }
 
-module _ {c} {A : Set c} {N} (isFiniteSet : IsFiniteSet A N) {p} (P : A → Set p) (decP : U.Decidable P) where
+module _ {c} {A : Set c} {N} (isFiniteSet : IsFiniteSet A N) {p} {P : A → Set p} (decP : U.Decidable P) where
   open IsFiniteSetoid isFiniteSet
 
   subsetFinite : FiniteSet _ _
-  subsetFinite = Σ-finiteSet isFiniteSet (DecFinite.Decidable-finite _ decP)
+  subsetFinite = Σ-finiteSet isFiniteSet (DecFinite.Decidable-finite decP)
+
+  subset-isFiniteSet : ∀ {a′} {A′ : Set a′} → LeftInverse (≡.setoid A′) (FiniteSet.setoid subsetFinite) → IsFiniteSet A′ _
+  subset-isFiniteSet = extendedIsFinite subsetFinite

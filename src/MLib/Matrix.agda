@@ -64,9 +64,17 @@ module _ {c ℓ} (struct : Struct bimonoidCode c ℓ) where
     identityʳ A i j = use (0# is rightIdentity for +) (A i j)
 
 
-    -- module _ ⦃ _ : HasEach isCommutativeMonoid ⦄ where
---       +-commutativeMonoid : CommutativeMonoid ℓ p
---       +-commutativeMonoid = Into.commutativeMonoid +-dagma
+    -- *-assoc : ⦃ _ : HasList (* distributesOverˡ + ∷ * distributesOverʳ + ∷ []) ⦄ → Associative _⊛_
+    -- *-assoc = ?
+    --   -- ...
+    --   use (* distributesOverˡ +)
+    --   -- ...
+
+
+
+    module _ ⦃ _ : HasEach (liftΠ +-part isCommutativeMonoid) ⦄ where
+      -- +-commutativeMonoid : CommutativeMonoid ℓ p
+      -- +-commutativeMonoid = Into.commutativeMonoid +-dagma
 
 --       private
 --         module M where

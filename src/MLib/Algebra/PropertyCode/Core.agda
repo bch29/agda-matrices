@@ -28,7 +28,7 @@ open import Category.Applicative
 
 open import Function.Inverse using (_↔_)
 open import Function.LeftInverse using (_↞_; LeftInverse)
-open import Function.Equality using (_⟨$⟩_)
+open import Function.Equality using (_⟶_; _⟨$⟩_; cong)
 open import Function.Equivalence using (Equivalence)
 
 open Table using (Table)
@@ -214,18 +214,22 @@ finitePropKind = record { isFiniteSetoid = PropKind-IsFiniteSet }
 --  Subsets of properties over a particular operator code type
 --------------------------------------------------------------------------------
 
-record Code k ℓ : Set (sucˡ (k ⊔ˡ ℓ)) where
+record Code k : Set (sucˡ k) where
   field
-    finiteAt : ℕ → FiniteSet k ℓ
+    K : ℕ → Set k
+    boundAt : ℕ → ℕ
+    isFiniteAt : ∀ n → IsFiniteSet (K n) (boundAt n)
 
-  module K n = FiniteSet (finiteAt n)
-  open K using () renaming (Carrier to K; N to boundAt; isFiniteSetoid to isFiniteAt)
+  finiteSetAt : ℕ → FiniteSet _ _
+  finiteSetAt n = record { isFiniteSetoid = isFiniteAt n }
+
+  module K n = FiniteSet (finiteSetAt n)
 
   module Property where
     finiteSet : FiniteSet _ _
     finiteSet = record
       { isFiniteSetoid =
-          Σ-isFiniteSetoid PropKind-IsFiniteSet (All-finiteSet boundAt isFiniteAt ∘ opArities)
+          Σ-isFiniteSetoid PropKind-IsFiniteSet (All-finiteSet finiteSetAt ∘ opArities)
       }
 
     open FiniteSet finiteSet public
@@ -234,21 +238,34 @@ record Code k ℓ : Set (sucˡ (k ⊔ˡ ℓ)) where
   allAppliedProperties : List (Property K)
   allAppliedProperties = FiniteSet.enumerate Property.finiteSet
 
-  subCode : ∀ {p} (P : ∀ {n} → K n → Set p) → (∀ {n} → U.Decidable (P {n})) → Code {!!}
-  subCode P decP = record
-    { K = λ n → ∃ (P {n})
-    ; boundAt = {!!}
-    ; isFiniteAt = {!!}
+  subCode :
+    ∀ {k′} {K′ : ℕ → Set k′}
+    → (∀ {n} → LeftInverse (≡.setoid (K′ n)) (K.setoid n))
+    → Code k′
+  subCode inj =
+    record
+    { isFiniteAt = λ n → extendedIsFinite (finiteSetAt n) inj
     }
 
+
+mapProperty :
+  ∀ {k k′} {K : ℕ → Set k} {K′ : ℕ → Set k′}
+  → (∀ {n} → K′ n → K n)
+  → Property K′
+  → Property K
+mapProperty f (π , κs) = π , All.map f κs
 
 record Properties {k} (code : Code k) : Set k where
   constructor properties
 
-  open Code code using (K)
+  open Code code using (K; module Property)
 
   field
     hasProperty : Property K → Bool
+
+  hasPropertyF : Property.setoid ⟶ ≡.setoid Bool
+  _⟨$⟩_ hasPropertyF = hasProperty
+  cong hasPropertyF (≡.refl , q) rewrite All′.PW-≡ K q = ≡.refl
 
 open Properties public
 
@@ -323,7 +340,7 @@ module _ {k} {code : Code k} where
       hasProperty-true = begin
         hasProperty Π π            ≡⟨ ≡.sym (proj₂ ∧.identity _ ) ⟩
         hasProperty Π π ∧ true     ≡⟨ ∧.∙-cong (≡.refl {x = hasProperty Π π}) (≡.sym hasAll-true)  ⟩
-        hasProperty Π π ∧ hasAll Π ≡⟨ Property.enumTable-complete icm (record { _⟨$⟩_ = hasProperty Π ; cong = λ {(≡.refl , ≡.refl) → ≡.refl}}) π ⟩
+        hasProperty Π π ∧ hasAll Π ≡⟨ Property.enumTable-complete icm (hasPropertyF Π) π ⟩
         hasAll Π                   ≡⟨ hasAll-true ⟩
         true                       ∎
 
@@ -350,7 +367,7 @@ module _ {k} {code : Code k} where
   π-∈ₚ-singleton : ∀ {π} → π ∈ₚ singleton π
   truth (π-∈ₚ-singleton {π}) with π Property.≟ π
   truth (π-∈ₚ-singleton {π}) | yes p = _
-  truth (π-∈ₚ-singleton {π}) | no ¬p = ¬p (OverΣ.refl ≡.refl)
+  truth (π-∈ₚ-singleton {π}) | no ¬p = ¬p Property.refl
 
   _⇒ₚ_ : Properties code → Properties code → Properties code
   hasProperty (Π₁ ⇒ₚ Π₂) π = not (hasProperty Π₁ π) ∨ hasProperty Π₂ π
@@ -369,3 +386,37 @@ module _ {k} {code : Code k} where
   Has⇒ₚ : ∀ {Π Π′ π} → π ∈ₚ Π′ → ⊨ (Π′ ⇒ₚ Π) → π ∈ₚ Π
   Has⇒ₚ {Π = Π} {Π′} {π} hasπ has⇒ =
     fromTruth (BoolExtra.MP (truth (⊨→⊢ has⇒ π)) (truth hasπ))
+
+module _ {k} {code : Code k} where
+  open Code code using (K; module Property)
+
+  subCodeProperties :
+    Properties code
+    → ∀ {k′} {K′ : ℕ → Set k′}
+    (inj : ∀ {n} → LeftInverse (≡.setoid (K′ n)) (K.setoid n))
+    → Properties (Code.subCode code inj)
+  hasProperty (subCodeProperties Π inj) π = hasProperty Π (mapProperty (LeftInverse.to inj ⟨$⟩_) π)
+
+  fromSubCode :
+    ∀ {k′} {K′ : ℕ → Set k′} {Π : Properties code} {π : Property K′}
+    (inj : ∀ {n} → LeftInverse (≡.setoid (K′ n)) (K.setoid n))
+    → π ∈ₚ subCodeProperties Π inj → mapProperty (LeftInverse.to inj ⟨$⟩_) π ∈ₚ Π
+  fromSubCode inj (fromTruth truth) = fromTruth truth
+
+  module _ {c ℓ} (rawStruct : RawStruct K c ℓ) where
+    open RawStruct rawStruct
+
+    reinterpret :
+      ∀ {k′} {K′ : ℕ → Set k′} (f : ∀ {n} → K′ n → K n) (π : Property K′)
+      → ⟦ mapProperty f π ⟧P rawStruct → ⟦ π ⟧P (subRawStruct f)
+    reinterpret f (associative      , ∙ ∷ [])     = id
+    reinterpret f (commutative      , ∙ ∷ [])     = id
+    reinterpret f (idempotent       , ∙ ∷ [])     = id
+    reinterpret f (selective        , ∙ ∷ [])     = id
+    reinterpret f (cancellative     , ∙ ∷ [])     = id
+    reinterpret f (leftIdentity     , α ∷ ∙ ∷ []) = id
+    reinterpret f (rightIdentity    , α ∷ ∙ ∷ []) = id
+    reinterpret f (leftZero         , α ∷ ∙ ∷ []) = id
+    reinterpret f (rightZero        , α ∷ ∙ ∷ []) = id
+    reinterpret f (distributesOverˡ , * ∷ + ∷ []) = id
+    reinterpret f (distributesOverʳ , * ∷ + ∷ []) = id

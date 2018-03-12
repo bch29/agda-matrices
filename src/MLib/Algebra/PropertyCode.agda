@@ -9,6 +9,8 @@ open import MLib.Algebra.PropertyCode.Core public
 
 import Relation.Unary as U using (Decidable)
 open import Relation.Binary as B using (Setoid)
+open import Function.LeftInverse using (LeftInverse)
+open import Function.Equality as FE using (_⟨$⟩_)
 
 open List using (_∷_; [])
 open import Data.List.All as All using (All; _∷_; []) public
@@ -53,5 +55,15 @@ record Struct {k} (code : Code k) c ℓ : Set (sucˡ (c ⊔ˡ ℓ ⊔ˡ k)) wher
   from′ : ∀ πs π ⦃ hasπs : HasList πs ⦄ ⦃ hasπ : π ∈ₚ fromList πs ⦄ → ⟦ π ⟧P rawStruct
   from′ _ = from _
 
-  -- subStruct : ∀ {p} (P : ∀ {n} → K n → Set p) (decP : ∀ {n} → U.Decidable (P {n})) → Struct (λ n → Σ (K n) P) c ℓ
-  -- subStruct P decP = ?
+  subStruct : ∀ {k′} {K′ : ℕ → Set k′} (inj : ∀ {n} → LeftInverse (≡.setoid (K′ n)) (K.setoid n)) → Struct (subCode inj) c ℓ
+  subStruct {K′ = K′} inj = record
+    { rawStruct = subRawStruct f
+    ; Π = subCodeProperties Π inj
+    ; reify =
+      λ {π} → reinterpret {code = code} rawStruct (_⟨$⟩_ (LeftInverse.to inj)) π
+            ∘ reify
+            ∘ fromSubCode inj
+    }
+    where
+      f : ∀ {n} → K′ n → K n
+      f = _⟨$⟩_ (LeftInverse.to inj)
