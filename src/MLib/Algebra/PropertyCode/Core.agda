@@ -238,13 +238,16 @@ record Code k : Set (sucˡ k) where
   allAppliedProperties : List (Property K)
   allAppliedProperties = FiniteSet.enumerate Property.finiteSet
 
-  subCode :
+  SubcodeInjection : ∀ {k′} → (ℕ → Set k′) → Set _
+  SubcodeInjection K′ = ∀ n → ¬ K′ n ⊎ LeftInverse (≡.setoid (K′ n)) (K.setoid n)
+
+  subcode :
     ∀ {k′} {K′ : ℕ → Set k′}
-    → (∀ {n} → LeftInverse (≡.setoid (K′ n)) (K.setoid n))
+    → SubcodeInjection K′
     → Code k′
-  subCode inj =
+  subcode {K′ = K′} inj =
     record
-    { isFiniteAt = λ n → extendedIsFinite (finiteSetAt n) inj
+    { isFiniteAt = λ n → extendedIsFinite′ (finiteSetAt n) (inj n)
     }
 
 
@@ -390,33 +393,41 @@ module _ {k} {code : Code k} where
 module _ {k} {code : Code k} where
   open Code code using (K; module Property)
 
-  subCodeProperties :
+  subcodeInjectionMapper : ∀ {k′} {K′ : ℕ → Set k′} → Code.SubcodeInjection code K′ → ∀ {n} → K n → K′ n
+  subcodeInjectionMapper inj {n} with inj n
+  subcodeInjectionMapper inj {n} | inj₁ ¬k′ = {!!}
+  subcodeInjectionMapper inj {n} | inj₂ y = {!!}
+
+  subcodeMapProperty : ∀ {k′} {K′ : ℕ → Set k′} → Code.SubcodeInjection code K′ → Property K → Property K′
+  subcodeMapProperty inj π = {!!}
+
+  subcodeProperties :
     Properties code
-    → ∀ {k′} {K′ : ℕ → Set k′}
-    (inj : ∀ {n} → LeftInverse (≡.setoid (K′ n)) (K.setoid n))
-    → Properties (Code.subCode code inj)
-  hasProperty (subCodeProperties Π inj) π = hasProperty Π (mapProperty (LeftInverse.to inj ⟨$⟩_) π)
+    → ∀ {k′} {K′ : ℕ → Set k′} (inj : Code.SubcodeInjection code K′)
+    → Properties (Code.subcode code inj)
+  hasProperty (subcodeProperties Π inj) π = {!!}
+    -- hasProperty Π (mapProperty (LeftInverse.to inj ⟨$⟩_) π)
 
-  fromSubCode :
-    ∀ {k′} {K′ : ℕ → Set k′} {Π : Properties code} {π : Property K′}
-    (inj : ∀ {n} → LeftInverse (≡.setoid (K′ n)) (K.setoid n))
-    → π ∈ₚ subCodeProperties Π inj → mapProperty (LeftInverse.to inj ⟨$⟩_) π ∈ₚ Π
-  fromSubCode inj (fromTruth truth) = fromTruth truth
+  -- fromSubcode :
+  --   ∀ {k′} {K′ : ℕ → Set k′} {Π : Properties code} {π : Property K′}
+  --   (inj : ∀ {n} → LeftInverse (≡.setoid (K′ n)) (K.setoid n))
+  --   → π ∈ₚ subcodeProperties Π inj → mapProperty (LeftInverse.to inj ⟨$⟩_) π ∈ₚ Π
+  -- fromSubcode inj (fromTruth truth) = fromTruth truth
 
-  module _ {c ℓ} (rawStruct : RawStruct K c ℓ) where
-    open RawStruct rawStruct
+  -- module _ {c ℓ} (rawStruct : RawStruct K c ℓ) where
+  --   open RawStruct rawStruct
 
-    reinterpret :
-      ∀ {k′} {K′ : ℕ → Set k′} (f : ∀ {n} → K′ n → K n) (π : Property K′)
-      → ⟦ mapProperty f π ⟧P rawStruct → ⟦ π ⟧P (subRawStruct f)
-    reinterpret f (associative      , ∙ ∷ [])     = id
-    reinterpret f (commutative      , ∙ ∷ [])     = id
-    reinterpret f (idempotent       , ∙ ∷ [])     = id
-    reinterpret f (selective        , ∙ ∷ [])     = id
-    reinterpret f (cancellative     , ∙ ∷ [])     = id
-    reinterpret f (leftIdentity     , α ∷ ∙ ∷ []) = id
-    reinterpret f (rightIdentity    , α ∷ ∙ ∷ []) = id
-    reinterpret f (leftZero         , α ∷ ∙ ∷ []) = id
-    reinterpret f (rightZero        , α ∷ ∙ ∷ []) = id
-    reinterpret f (distributesOverˡ , * ∷ + ∷ []) = id
-    reinterpret f (distributesOverʳ , * ∷ + ∷ []) = id
+  --   reinterpret :
+  --     ∀ {k′} {K′ : ℕ → Set k′} (f : ∀ {n} → K′ n → K n) (π : Property K′)
+  --     → ⟦ mapProperty f π ⟧P rawStruct → ⟦ π ⟧P (subRawStruct f)
+  --   reinterpret f (associative      , ∙ ∷ [])     = id
+  --   reinterpret f (commutative      , ∙ ∷ [])     = id
+  --   reinterpret f (idempotent       , ∙ ∷ [])     = id
+  --   reinterpret f (selective        , ∙ ∷ [])     = id
+  --   reinterpret f (cancellative     , ∙ ∷ [])     = id
+  --   reinterpret f (leftIdentity     , α ∷ ∙ ∷ []) = id
+  --   reinterpret f (rightIdentity    , α ∷ ∙ ∷ []) = id
+  --   reinterpret f (leftZero         , α ∷ ∙ ∷ []) = id
+  --   reinterpret f (rightZero        , α ∷ ∙ ∷ []) = id
+  --   reinterpret f (distributesOverˡ , * ∷ + ∷ []) = id
+  --   reinterpret f (distributesOverʳ , * ∷ + ∷ []) = id

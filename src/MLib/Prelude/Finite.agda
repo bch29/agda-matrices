@@ -124,10 +124,26 @@ extendedIsFinite finiteSet ontoF = record
   where
     open FiniteSet finiteSet using (ontoFin)
 
-extendFinite : ∀ {c ℓ c′ ℓ′} {S : Setoid c ℓ} (F : FiniteSet c′ ℓ′) → LeftInverse S (FiniteSet.setoid F) → FiniteSet _ _
+extendFinite : ∀ {c ℓ c′ ℓ′} {S : Setoid c ℓ} (F : FiniteSet c′ ℓ′) → LeftInverse S (FiniteSet.setoid F) → FiniteSet c ℓ
 extendFinite finiteSet ontoF = record
   { isFiniteSetoid = extendedIsFinite finiteSet ontoF
   }
+
+module _ {c ℓ c′ ℓ′} {S : Setoid c ℓ} (F : FiniteSet c′ ℓ′) where
+
+  extendedIsFinite′N : (¬ Setoid.Carrier S) ⊎ LeftInverse S (FiniteSet.setoid F) → ℕ
+  extendedIsFinite′N (inj₁ x) = 0
+  extendedIsFinite′N (inj₂ y) = FiniteSet.N F
+
+  extendedIsFinite′ : (inj : (¬ Setoid.Carrier S) ⊎ LeftInverse S (FiniteSet.setoid F)) → IsFiniteSetoid S (extendedIsFinite′N inj)
+  extendedIsFinite′ (inj₂ f) = extendedIsFinite F f
+  extendedIsFinite′ (inj₁ p) = record
+    { ontoFin = record
+      { to = record { _⟨$⟩_ = ⊥-elim ∘ p ; cong = λ {i} → ⊥-elim (p i) }
+      ; from = ≡.→-to-⟶ λ ()
+      ; left-inverse-of = ⊥-elim ∘ p
+      }
+    }
 
 
 -- Given a family of finite sets, indexed by a finite set, the sum over the entire family is finite.
