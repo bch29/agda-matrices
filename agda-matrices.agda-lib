@@ -1,3 +1,5 @@
 name: agda-matrices
-depend: standard-library
+depend:
+  standard-library
+  holes
 include: ./src/

@@ -66,7 +66,7 @@ module Search {r} {_<_ : Rel A r} (isStrictTotalOrder : IsStrictTotalOrder _≡_
     just x <|> _ = just x
     _ <|> y = y
 
-    infixr 0 _>>=_
+    infixl 1 _>>=_
 
     _>>=_ : ∀ {a b} {A : Set a} {B : Set b} → Maybe A → (A → Maybe B) → Maybe B
     nothing >>= _ = nothing
