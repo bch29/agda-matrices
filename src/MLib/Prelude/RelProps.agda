@@ -7,7 +7,7 @@ open import Function.Equality using (_⟶_; _⟨$⟩_; cong)
 open import Function.Inverse using (Inverse; _↔_)
 open import Function.LeftInverse using (LeftInverse; _↞_)
 import Data.Product.Relation.SigmaPropositional as OverΣ
-import Data.Product.Relation.SigmaPointwise as ΣR
+import Data.Product.Relation.Pointwise.Dependent as ΣR
 
 Σ-bij : ∀ {a b c} {A : Set a} {B : A → Set b} {C : A → Set c} → (∀ x → B x ↔ C x) → Σ A B ↔ Σ A C
 Σ-bij pw = record

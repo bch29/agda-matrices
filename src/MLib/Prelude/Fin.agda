@@ -9,7 +9,7 @@ open import Function.LeftInverse using (LeftInverse; _↞_)
 open import Function.Equality using (_⟶_; _⟨$⟩_; cong)
 
 import Relation.Binary.Indexed as I
-import Data.Product.Relation.SigmaPointwise as Σ
+import Data.Product.Relation.Pointwise.Dependent as Σ
 
 --------------------------------------------------------------------------------
 --  Types

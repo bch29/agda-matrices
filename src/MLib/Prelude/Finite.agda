@@ -19,7 +19,7 @@ open import Function.Inverse using (Inverse; _↔_)
 open import Function.Equality as FE using (_⟶_; _⟨$⟩_; cong)
 open import Function.Related using () renaming (module EquationalReasoning to RelReasoning)
 
-import Data.Product.Relation.SigmaPointwise as ΣR
+import Data.Product.Relation.Pointwise.Dependent as ΣR
 import Data.Product.Relation.SigmaPropositional as OverΣ
 
 open Algebra using (IdempotentCommutativeMonoid)

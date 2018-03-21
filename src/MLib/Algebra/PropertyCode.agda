@@ -55,15 +55,15 @@ record Struct {k} (code : Code k) c ℓ : Set (sucˡ (c ⊔ˡ ℓ ⊔ˡ k)) wher
   from′ : ∀ πs π ⦃ hasπs : HasList πs ⦄ ⦃ hasπ : π ∈ₚ fromList πs ⦄ → ⟦ π ⟧P rawStruct
   from′ _ = from _
 
-  subStruct : ∀ {k′} {K′ : ℕ → Set k′} (inj : ∀ {n} → LeftInverse (≡.setoid (K′ n)) (K.setoid n)) → Struct (subCode inj) c ℓ
-  subStruct {K′ = K′} inj = record
-    { rawStruct = subRawStruct f
-    ; Π = subCodeProperties Π inj
-    ; reify =
-      λ {π} → reinterpret {code = code} rawStruct (_⟨$⟩_ (LeftInverse.to inj)) π
-            ∘ reify
-            ∘ fromSubCode inj
-    }
-    where
-      f : ∀ {n} → K′ n → K n
-      f = _⟨$⟩_ (LeftInverse.to inj)
+  -- subStruct : ∀ {k′} {K′ : ℕ → Set k′} (inj : ∀ {n} → LeftInverse (≡.setoid (K′ n)) (K.setoid n)) → Struct (subCode inj) c ℓ
+  -- subStruct {K′ = K′} inj = record
+  --   { rawStruct = subRawStruct f
+  --   ; Π = subCodeProperties Π inj
+  --   ; reify =
+  --     λ {π} → reinterpret {code = code} rawStruct (_⟨$⟩_ (LeftInverse.to inj)) π
+  --           ∘ reify
+  --           ∘ fromSubCode inj
+  --   }
+  --   where
+  --     f : ∀ {n} → K′ n → K n
+  --     f = _⟨$⟩_ (LeftInverse.to inj)

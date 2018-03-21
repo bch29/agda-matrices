@@ -13,7 +13,7 @@ open import Data.List.Any.Membership.Propositional using (_∈_)
 
 open import Data.Vec using (Vec; _∷_; [])
 open import Data.Vec.N-ary
-open import Data.Vec.Relation.InductivePointwise using (Pointwise; []; _∷_)
+open import Data.Vec.Relation.Pointwise.Inductive using (Pointwise; []; _∷_)
 
 open import Data.Product.Relation.SigmaPropositional as OverΣ using (OverΣ)
 

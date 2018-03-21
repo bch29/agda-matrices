@@ -11,7 +11,7 @@ open import Function.Equality using (_⟶_; _⟨$⟩_; cong)
 open import Function.Related renaming (module EquationalReasoning to BijReasoning)
 
 import Relation.Binary.Indexed as I
-import Data.Product.Relation.SigmaPointwise as Σ
+import Data.Product.Relation.Pointwise.Dependent as Σ
 import Data.Product.Relation.SigmaPropositional as OverΣ
 open OverΣ using (OverΣ)
 

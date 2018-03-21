@@ -17,7 +17,7 @@ open import Data.List.Any.Membership.Propositional using (_∈_)
 
 open import Data.Vec using (Vec; _∷_; [])
 open import Data.Vec.N-ary
-open import Data.Vec.Relation.InductivePointwise using (Pointwise; []; _∷_)
+open import Data.Vec.Relation.Pointwise.Inductive using (Pointwise; []; _∷_)
 
 open import Data.Product.Relation.SigmaPropositional as OverΣ using (OverΣ)
 
@@ -302,7 +302,7 @@ module _ {k} {code : Code k} where
 
 
   -- Inhabited if all the properties are present. Unsuitable for use as an
-  -- implicit argument, but easy to work with.
+  -- instance argument, but easy to work with.
 
   ⊢ : Properties code → Set k
   ⊢ Π = ∀ π → π ∈ₚ Π
@@ -393,19 +393,19 @@ module _ {k} {code : Code k} where
 module _ {k} {code : Code k} where
   open Code code using (K; module Property)
 
-  subcodeInjectionMapper : ∀ {k′} {K′ : ℕ → Set k′} → Code.SubcodeInjection code K′ → ∀ {n} → K n → K′ n
-  subcodeInjectionMapper inj {n} with inj n
-  subcodeInjectionMapper inj {n} | inj₁ ¬k′ = {!!}
-  subcodeInjectionMapper inj {n} | inj₂ y = {!!}
+  -- subcodeInjectionMapper : ∀ {k′} {K′ : ℕ → Set k′} → Code.SubcodeInjection code K′ → ∀ {n} → K n → K′ n
+  -- subcodeInjectionMapper inj {n} with inj n
+  -- subcodeInjectionMapper inj {n} | inj₁ ¬k′ = {!!}
+  -- subcodeInjectionMapper inj {n} | inj₂ y = {!!}
 
-  subcodeMapProperty : ∀ {k′} {K′ : ℕ → Set k′} → Code.SubcodeInjection code K′ → Property K → Property K′
-  subcodeMapProperty inj π = {!!}
+  -- subcodeMapProperty : ∀ {k′} {K′ : ℕ → Set k′} → Code.SubcodeInjection code K′ → Property K → Property K′
+  -- subcodeMapProperty inj π = {!!}
 
-  subcodeProperties :
-    Properties code
-    → ∀ {k′} {K′ : ℕ → Set k′} (inj : Code.SubcodeInjection code K′)
-    → Properties (Code.subcode code inj)
-  hasProperty (subcodeProperties Π inj) π = {!!}
+  -- subcodeProperties :
+  --   Properties code
+  --   → ∀ {k′} {K′ : ℕ → Set k′} (inj : Code.SubcodeInjection code K′)
+  --   → Properties (Code.subcode code inj)
+  -- hasProperty (subcodeProperties Π inj) π = {!!}
     -- hasProperty Π (mapProperty (LeftInverse.to inj ⟨$⟩_) π)
 
   -- fromSubcode :
