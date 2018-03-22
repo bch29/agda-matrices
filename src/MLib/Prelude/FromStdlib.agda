@@ -25,7 +25,7 @@ open import Data.Empty public
 
 module Bool where
   open import Data.Bool public
-open Bool using (Bool; true; false) hiding (module Bool) public
+open Bool using (Bool; true; false; if_then_else_) hiding (module Bool) public
 
 module Nat where
   open import Data.Nat public
@@ -52,7 +52,7 @@ open Table using (Table; tabulate; lookup) hiding (module Table) public
 
 module Function where
   open import Function public
-open Function using (id; _∘_) public
+open Function using (id; _∘_; case_of_) public
 
 --------------------------------------------------------------------------------
 --  Relations
@@ -87,3 +87,58 @@ module Algebra where
   open import Algebra.Structures public
   module FunctionProperties {a ℓ} {A : Set a} (_≈_ : Rel A ℓ) where
     open import Algebra.FunctionProperties _≈_ public
+
+--------------------------------------------------------------------------------
+--  From Holes.Prelude
+--------------------------------------------------------------------------------
+
+open import Holes.Prelude public using
+  ( RawMonad
+  ; _>>=_
+  ; return
+  ; _<$>_
+  ; join
+
+  ; RawTraversable
+  ; traverse
+  ; sequence
+
+  ; Choice
+  ; _<|>_
+  )
+
+infixl 1 _>>=ₘ_ _>>=ₗ_
+
+_>>=ₘ_ : ∀ {a b} {A : Set a} {B : Set b} → Maybe A → (A → Maybe B) → Maybe B
+nothing >>=ₘ _ = nothing
+just x >>=ₘ f = f x
+
+_>>=ₗ_ : ∀ {a b} {A : Set a} {B : Set b} → List A → (A → List B) → List B
+[] >>=ₗ _ = []
+(x ∷ xs) >>=ₗ f = f x List.++ (xs >>=ₗ f)
+
+instance
+  Maybe-Monad : ∀ {a} → RawMonad {a} Maybe
+  _>>=_  {{Maybe-Monad}} = _>>=ₘ_
+  return {{Maybe-Monad}} = just
+
+  List-Monad : ∀ {a} → RawMonad {a} List
+  _>>=_  {{List-Monad}} = _>>=ₗ_
+  return {{List-Monad}} x = x ∷ []
+
+instance
+  Maybe-Traversable : ∀ {a} → RawTraversable {a} Maybe
+  traverse {{Maybe-Traversable}} f (just x) = just <$> f x
+  traverse {{Maybe-Traversable}} f nothing = return nothing
+
+  List-Traversable : ∀ {a} → RawTraversable {a} List
+  traverse {{List-Traversable}} f [] = return []
+  traverse {{List-Traversable}} f (x ∷ xs) =
+    f x >>= λ x′ →
+    traverse {{List-Traversable}} f xs >>= λ xs′ →
+    return (x′ ∷ xs′)
+
+instance
+  Maybe-Choice : ∀ {a} → Choice {a} Maybe
+  Choice._<|>_ Maybe-Choice (just x) _ = just x
+  Choice._<|>_ Maybe-Choice nothing y = y

@@ -17,6 +17,11 @@ open import Holes.Prelude
 open import MLib.Algebra.PropertyCode.RawStruct
 open import MLib.Algebra.PropertyCode.Core
 
+open import Function.Equivalence using (Equivalence)
+open import Function.Equality using (_⟨$⟩_)
+import Data.Bool.Properties as Bool
+open Function using (case_of_)
+
 open import Reflection
 
 private
@@ -48,7 +53,7 @@ private
   firstMatching (x ∷ xs) f = f x <|> firstMatching xs f
 
 
-module UseProperty {k} {code : Code k} {c ℓ} (rawStruct : RawStruct (Code.K code) c ℓ) where
+module UseProperty {k} {code : Code k} {c ℓ} (rawStruct : RawStruct (Code.K code) c ℓ) {Π : Properties code} (reify : ∀ {π} → π ∈ₚ Π → ⟦ π ⟧P rawStruct) where
   open RawStruct rawStruct
   open Code code
 
@@ -65,5 +70,20 @@ module UseProperty {k} {code : Code k} {c ℓ} (rawStruct : RawStruct (Code.K co
   propertiesInScope : TC PropertiesSet
   propertiesInScope = getContext >>=′ itraverseMaybe argToProperties
 
-  findProperty : Property K → PropertiesSet → Maybe Term
-  findProperty π Πs = {!!}
+  findProperty : ∀ π → PropertiesSet → Maybe (Σ (Properties code) (λ Π → π ∈ₚ Π))
+  findProperty π Πs = firstMatching Πs go
+    where
+    go : Properties code × Term → Maybe (Σ (Properties code) (λ Π → π ∈ₚ Π))
+    go (Π , t) with hasProperty Π π | ≡.inspect (hasProperty Π) π
+    go (Π , t) | false | _ = nothing
+    go (Π , t) | true | ≡.[ p ] = just (Π , fromTruth (Equivalence.from Bool.T-≡ ⟨$⟩ p))
+
+  macro
+    use : Property K → Term → TC ⊤
+    use π goal =
+      propertiesInScope >>=′ λ Πs →
+      case findProperty π Πs of λ
+        { (just (Π , p)) →
+          -- let res = 
+        ; nothing → typeError (strErr "can't find desired property" ∷ [])
+        }
