@@ -20,99 +20,109 @@ data Path (x y : V) : Set (v ⊔ˡ e) where
   connect : ∀ {z} (p₁ : Path x z) (p₂ : Path z y) → Path x y
 
 
-module Unseen where
-  -- Represents a set of vertices have yet to be seen. Contains /at most/ 'n'
-  -- vertices.
-  record UnseenSet (n : ℕ) : Set (v ⊔ˡ e ⊔ˡ p) where
-    constructor mkUnseen
-    field
-      getUnseen : Tree (λ _ → ⊤)
+private
+  module Seen where
+    -- Represents a set of vertices that have been seen. At most 'n' vertices
+    -- have /not/ been seen.
+    record SeenSet (n : ℕ) : Set (v ⊔ˡ e ⊔ˡ p) where
+      constructor mkSeen
+      field
+        getSeen : Tree (λ _ → ⊤)
 
-  empty : UnseenSet 0
-  empty = mkUnseen Tree.empty
+    isSeen : ∀ {n} → V → SeenSet n → Bool
+    isSeen x (mkSeen t) = x Tree.∈? t
 
-  -- mark a vertex as seen
-  unmark : ∀ {n} → V → UnseenSet n → Maybe (UnseenSet (Nat.suc n))
-  unmark x (mkUnseen t) with Tree.lookup x t
-  unmark x (mkUnseen t) | just _ = nothing
-  unmark x (mkUnseen t) | nothing = just (mkUnseen (Tree.insert x tt t))
+    -- Mark a vertex as seen, thus reducing the number of /unseen/ vertices.
+    mark : ∀ {n} → V → SeenSet (Nat.suc n) → Maybe (SeenSet n)
+    mark x u@(mkSeen t) = if Bool.not (isSeen x u) then just (mkSeen (Tree.insert x tt t)) else nothing
 
-  -- mark a vertex as unseen
-  mark : ∀ {n} → V → UnseenSet (Nat.suc n) → Maybe (UnseenSet n)
-  mark x (mkUnseen t) with Tree.lookup x t
-  mark x (mkUnseen t) | just _ = just (mkUnseen (Tree.delete x t))
-  mark x (mkUnseen t) | nothing = nothing
+    -- Make a seen set for a particular graph. The number of unseen vertices in
+    -- the result is bounded above by the number of vertices in the graph.
+    forGraph : Graph → ∃ SeenSet
+    forGraph gr = (countVertices gr , mkSeen Tree.empty)
+      where
+      -- this overcounts but that doesn't matter because the index is only there
+      -- to ensure termination of the DFS
+      countVertices : Graph → ℕ
+      countVertices = List.foldr (λ { (_ , es) n → List.foldr (λ _ → Nat.suc) n es }) 0 ∘ Tree.toList
 
-  isUnseen : ∀ {n} → V → UnseenSet n → Bool
-  isUnseen x (mkUnseen t) =
-    case Tree.lookup x t of λ
-    { (just _) → true
-    ; nothing → false
+    inj : ∀ {n} → SeenSet n → SeenSet (Nat.suc n)
+    inj (mkSeen t) = mkSeen t
+
+open Seen using (SeenSet)
+
+private
+  infixl 1 _>>=ₛ_
+
+  MonadDfs : ∀ {a} → ℕ → Set a → Set (v ⊔ˡ (p ⊔ˡ (e ⊔ˡ a)))
+  MonadDfs n A = SeenSet n → A × SeenSet n
+
+  runMonadDfs : ∀ {n a} {A : Set a} → MonadDfs n A → SeenSet n → A
+  runMonadDfs f = proj₁ ∘ f
+
+  _>>=ₛ_ : ∀ {n a b} {A : Set a} {B : Set b} → MonadDfs n A → (A → MonadDfs n B) → MonadDfs n B
+  (f >>=ₛ g) s =
+    let x , s′ = f s
+    in g x s′
+
+  returnₛ : ∀ {n a} {A : Set a} → A → MonadDfs n A
+  returnₛ x s = x , s
+
+  withMarked : ∀ {n a} {A : Set a} V → MonadDfs n A → MonadDfs (Nat.suc n) (Maybe A)
+  withMarked v f s =
+    case Seen.mark v s of λ
+    { (just s′) →
+      let x , s′′ = f s′
+      in just x , Seen.inj s′′
+    ; nothing → nothing , s
     }
 
-  -- make an unseen set from all the vertices in the given graph which are the
-  -- source of any edge
-  allSources : Graph → ∃ UnseenSet
-  allSources = go ∘ Tree.toList
-    where
-    step : Σ V (λ x → List (∃ (_⇒_ x))) → ∃ UnseenSet → ∃ UnseenSet
-    step (x , _) (n , u) =
-      case unmark x u of λ
-      { (just u′) → _ , u′
-      ; nothing → _ , u
-      }
-
-    go : List (Σ V (λ x → List (∃ (_⇒_ x)))) → ∃ UnseenSet
-    go = List.foldr step (0 , empty)
-
-  inj : ∀ {m n} → m Nat.≤ n → UnseenSet m → UnseenSet n
-  inj _ (mkUnseen t) = mkUnseen t
-
-open Unseen using (UnseenSet)
 
 module _ (graph : Graph) where
 
   private
-    go₁ : ∀ {n} (source : V) → UnseenSet n → ∃ (λ n′ → n′ Nat.≤ n × UnseenSet n′) × List (∃ (Path source))
-    go₂ : ∀ {n} (source : V) → UnseenSet (Nat.suc n) → ∃ (λ n′ → n′ Nat.≤ Nat.suc n × UnseenSet n′) × List (∃ (Path source))
-    go₃ : ∀ {n} (source : V) → List (∃ (λ dest → source ⇒ dest)) → UnseenSet n → ∃ (λ n′ → n′ Nat.≤ n × UnseenSet n′) × List (∃ (Path source))
+    PathsFrom = List ∘ ∃ ∘ Path
 
-    -- If there are no vertices left to visit, stop
-    go₁ {Nat.zero} source unseen = (_ , Nat.z≤n , unseen) , []
-    --
-    go₁ {Nat.suc n} source unseen = go₂ source unseen
+    -- Calculates paths from the given source to every reachable target not in
+    -- the seen set. Returns the new seen set, the list of paths found, and
+    -- a boolean indicating whether this source was previously in the seen
+    -- set.
+    pathsFromSource : ∀ {n} (source : V) → MonadDfs n (Maybe (PathsFrom source))
 
-    go₂ {n} source unseen =
-      case Unseen.mark source unseen of λ
-        -- this source vertex has not been visited; recurse
-        { (just unseen′) →
-          case Tree.lookup source graph of λ
-          -- We have a list of edges from this source to some other vertex. For
-          -- each of these, a recursive call will only return paths from that
-          -- vertex if it is yet unseen.
-          { (just es) →
-            let (n′ , n′≤n , unseen′′) , ps = go₃ source es unseen′
-            in (n′ , Nat.≤-trans n′≤n (Nat.n≤1+n _) , unseen′′) ,
-               (List.map (λ {(_ , e) → _ , edge e}) es List.++ ps)
-          -- there are no edges from this source so nothing is reachable from it
-          ; nothing → (_ , Nat.n≤1+n _ , unseen′) , []
-          }
-        -- this source vertex has already been visited; do nothing
-        ; nothing → (_ , Nat.≤-refl , unseen) , []
-        }
+    -- Calculates paths from the given source to every reachable target not in
+    -- the seen set, whose first edge is among the list given.
+    pathsViaEdges : ∀ {n} {source : V} → List (∃ (λ dest → source ⇒ dest)) → MonadDfs n (PathsFrom source)
 
-    go₃ source [] unseen = (_ , Nat.≤-refl , unseen) , []
-    go₃ {n} source ((d , e) ∷ es) unseen =
-      case go₁ d unseen of λ
-      { ((n′ , n′≤n , unseen′) , paths-from-d) →
-        case go₃ source es (Unseen.inj {n = n} n′≤n unseen′) of λ
-        { (unseen′′ , restPaths) →
-          let paths-via-d = List.map (λ {(d′ , p) → _ , connect (edge e) p}) paths-from-d
-              -- Only add the path corresponding to the edge 'e' if 'd' has not
-              -- been previously visited.
-              paths-of-e = if Unseen.isUnseen d unseen′ then (_ , edge e) ∷ [] else []
-          in unseen′′ , paths-of-e List.++ paths-via-d List.++ restPaths
-        }
+    -- Calculates paths via the edge given to every reachable target not in the
+    -- seen set.
+    pathsViaEdge : ∀ {n} {source dest : V} → source ⇒ dest → MonadDfs n (PathsFrom source)
+
+    -- The base case of induction on the size of the seen set. This is only here
+    -- to satisfy the termination checker.
+    pathsFromSource {Nat.zero} source = returnₛ nothing
+    pathsFromSource {Nat.suc _} source = withMarked source (
+      case Tree.lookup source graph of λ
+      -- We have a list of edges from this source to some other vertex. For
+      -- each of these, a recursive call will only return paths from that
+      -- vertex if it is yet unseen. Note the recursive call is on a seen set
+      -- with an index one lower, satisfying Agda's termination checker.
+      { (just es) → pathsViaEdges es >>=ₛ returnₛ ∘ just
+      -- there are no edges from this source so nothing is reachable from it
+      ; nothing → returnₛ (just [])
+      }) >>=ₛ maybe returnₛ (returnₛ nothing)
+
+    pathsViaEdges [] = returnₛ []
+    pathsViaEdges ((d , e) ∷ es) =
+      pathsViaEdge e >>=ₛ λ pathsVia-d →
+      pathsViaEdges es >>=ₛ λ restPaths →
+      returnₛ (pathsVia-d List.++ restPaths)
+
+    pathsViaEdge {dest = d} e =
+      pathsFromSource d >>=ₛ λ
+      { (just pathsFrom-d) →
+        let pathsVia-d = List.map (λ {(d′ , p) → d′ , connect (edge e) p}) pathsFrom-d
+        in returnₛ ((_ , edge e) ∷ pathsVia-d)
+      ; nothing → returnₛ []
       }
 
   -- Given a source vertex S, finds all vertices T such that there is a path
@@ -120,5 +130,49 @@ module _ (graph : Graph) where
   -- once.
   allTargetsFrom : (source : V) → List (∃ (Path source))
   allTargetsFrom source =
-    let _ , unseen = Unseen.allSources graph
-    in proj₂ (go₁ source unseen)
+    let _ , seen = Seen.forGraph graph
+    in maybe id [] (runMonadDfs (pathsFromSource source) seen)
+
+module _ (graph : Graph) {dest} (isDest : ∀ v → Dec (v ≡ dest)) where
+
+  private
+    findDestFrom : ∀ {n} (source : V) → MonadDfs n (Maybe (Path source dest))
+    findViaEdges : ∀ {n} {source : V} → List (∃ (λ inter → source ⇒ inter)) → MonadDfs n (Maybe (Path source dest))
+    findViaEdge : ∀ {n} {source inter : V} → source ⇒ inter → MonadDfs n (Maybe (Path source dest))
+
+    -- The base case of induction on the size of the seen set. This is only here
+    -- to satisfy the termination checker.
+    findDestFrom {Nat.zero} source = returnₛ nothing
+    findDestFrom {Nat.suc _} source = withMarked source (
+      case Tree.lookup source graph of λ
+      -- We have a list of edges from this source to some other vertex. For
+      -- each of these, a recursive call will only return paths from that
+      -- vertex if it is yet unseen. Note the recursive call is on a seen set
+      -- with an index one lower, satisfying Agda's termination checker.
+      { (just es) → findViaEdges es
+      -- there are no edges from this source so nothing is reachable from it
+      ; nothing → returnₛ nothing
+      }) >>=ₛ maybe returnₛ (returnₛ nothing)
+
+    findViaEdges [] = returnₛ nothing
+    findViaEdges ((d , e) ∷ es) =
+      findViaEdge e >>=ₛ λ
+      { (just p) → returnₛ (just p)
+      ; nothing → findViaEdges es
+      }
+
+    findViaEdge {inter = d} e with isDest d
+    findViaEdge {inter = _} e | yes ≡.refl = returnₛ (just (edge e))
+    findViaEdge {inter = d} e | no _ =
+      findDestFrom d >>=ₛ λ
+      { (just p) → returnₛ (just (connect (edge e) p))
+      ; nothing → returnₛ nothing
+      }
+
+  -- Given a source vertex S, finds all vertices T such that there is a path
+  -- from S to T, and returns the path. No target vertex is returned more than
+  -- once.
+  findDest : (source : V) → Maybe (Path source dest)
+  findDest source =
+    let _ , seen = Seen.forGraph graph
+    in runMonadDfs (findDestFrom source) seen

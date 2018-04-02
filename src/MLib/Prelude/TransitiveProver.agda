@@ -17,6 +17,7 @@ Database = List (∃₂ λ x y → x ⇒ y)
 
 module Search {r} {_<_ : Rel A r} (isStrictTotalOrder : IsStrictTotalOrder _≡_ _<_) where
   open DFS _⇒_ isStrictTotalOrder
+  open IsStrictTotalOrder isStrictTotalOrder using (_≟_)
 
   private
     module Tree = AVL isStrictTotalOrder
@@ -30,14 +31,13 @@ module Search {r} {_<_ : Rel A r} (isStrictTotalOrder : IsStrictTotalOrder _≡_
     mkGraph [] = Tree.empty
     mkGraph ((x , y , p) ∷ ps) = Tree.insertWith x ((y , p) ∷ []) List._++_ (mkGraph ps)
 
---     findChain : Database → ∀ x y → Maybe (Chain x y)
---     findChain db x y =
---       let db′ = mkGraph db
---           _ , unseen = (initialUnseenSet db)
---       in Single.dfsFrom₁ db′ unseen
+    findPath : Database → ∀ x y → Maybe (Path x y)
+    findPath db x y =
+      let db′ = mkGraph db
+      in findDest db′ {y} (λ v → v ≟ y) x
 
---   tryProve : Database → ∀ x y → Maybe (x ⇒ y)
---   tryProve db x y = findChain db x y >>=ₘ just ∘ pathTo⇒
+  tryProve : Database → ∀ x y → Maybe (x ⇒ y)
+  tryProve db x y = findPath db x y >>=ₘ just ∘ pathTo⇒
 
   findTransTargets : Database → ∀ x → List (∃ λ y → x ⇒ y)
   findTransTargets db x = allTargetsFrom (mkGraph db) x >>=ₗ λ {(y , c) → return (y , pathTo⇒ c)}

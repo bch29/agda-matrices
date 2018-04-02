@@ -44,10 +44,6 @@ private
        ; nothing → mxs′
        }
 
-  _<|>_ : ∀ {a} {A : Set a} → Maybe A → Maybe A → Maybe A
-  just x <|> _ = just x
-  _ <|> y = y
-
   firstMatching : ∀ {a b} {A : Set a} {B : Set b} → List A → (A → Maybe B) → Maybe B
   firstMatching [] f = nothing
   firstMatching (x ∷ xs) f = f x <|> firstMatching xs f
@@ -70,8 +66,8 @@ module UseProperty {k} {code : Code k} {c ℓ} (rawStruct : RawStruct (Code.K co
   propertiesInScope : TC PropertiesSet
   propertiesInScope = getContext >>=′ itraverseMaybe argToProperties
 
-  findProperty : ∀ π → PropertiesSet → Maybe (Σ (Properties code) (λ Π → π ∈ₚ Π))
-  findProperty π Πs = firstMatching Πs go
+  findProperty : ∀ π → PropertiesSet → List (Σ (Properties code) (λ Π → π ∈ₚ Π))
+  findProperty π = List.mapMaybe go
     where
     go : Properties code × Term → Maybe (Σ (Properties code) (λ Π → π ∈ₚ Π))
     go (Π , t) with hasProperty Π π | ≡.inspect (hasProperty Π) π
@@ -83,7 +79,6 @@ module UseProperty {k} {code : Code k} {c ℓ} (rawStruct : RawStruct (Code.K co
     use π goal =
       propertiesInScope >>=′ λ Πs →
       case findProperty π Πs of λ
-        { (just (Π , p)) →
-          -- let res = 
-        ; nothing → typeError (strErr "can't find desired property" ∷ [])
+        { [] → typeError (strErr "can't find desired property" ∷ [])
+        ; Πs@(_ ∷ _) → {!!}
         }
