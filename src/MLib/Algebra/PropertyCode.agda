@@ -36,12 +36,8 @@ record Struct {k} (code : Code k) c ℓ : Set (sucˡ (c ⊔ˡ ℓ ⊔ˡ k)) wher
   Has : Property K → Set
   Has π = π ∈ₚ Π
 
-  record HasEach (Π′ : Properties code) : Set where
-    constructor mkHasEach
-    field
-      getHasEach : ⊨ (Π′ ⇒ₚ Π)
-
-  open HasEach
+  HasEach : (Π′ : Properties code) → Set
+  HasEach Π′ = Π′ ⇒ₚ Π
 
   HasList : List (Property K) → Set
   HasList = HasEach ∘ fromList
@@ -50,7 +46,7 @@ record Struct {k} (code : Code k) c ℓ : Set (sucˡ (c ⊔ˡ ℓ ⊔ˡ k)) wher
   use _ ⦃ hasπ ⦄ = reify hasπ
 
   from : ∀ Π′ π ⦃ hasΠ′ : HasEach Π′ ⦄ ⦃ hasπ : π ∈ₚ Π′ ⦄ → ⟦ π ⟧P rawStruct
-  from _ _ ⦃ hasΠ′ ⦄ ⦃ hasπ ⦄ = use _ ⦃ Has⇒ₚ hasπ (getHasEach hasΠ′) ⦄
+  from _ _ ⦃ hasΠ′ ⦄ ⦃ hasπ ⦄ = use _ ⦃ ⇒ₚ-MP hasπ hasΠ′ ⦄
 
   from′ : ∀ πs π ⦃ hasπs : HasList πs ⦄ ⦃ hasπ : π ∈ₚ fromList πs ⦄ → ⟦ π ⟧P rawStruct
   from′ _ = from _

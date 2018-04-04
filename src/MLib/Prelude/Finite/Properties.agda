@@ -6,7 +6,7 @@ open import MLib.Prelude.FromStdlib
 import MLib.Prelude.Fin as Fin
 open Fin using (Fin)
 
-import Relation.Binary as B using (Decidable)
+import Relation.Binary as B
 
 open import Function.LeftInverse using (LeftInverse; _↞_) renaming (_∘_ to _ⁱ∘_)
 open import Function.Inverse using (Inverse; _↔_)
@@ -14,7 +14,7 @@ open import Function.Equality as FE using (_⟶_; _⟨$⟩_; cong)
 
 open Algebra using (IdempotentCommutativeMonoid)
 
-open Table
+open Table hiding (setoid)
 open List using ([]; _∷_)
 
 
@@ -125,16 +125,27 @@ module _ {c ℓ} (icMonoid : IdempotentCommutativeMonoid c ℓ) where
       open EqReasoning S.setoid
 
 
+-- A finite set can be strictly totally ordered by its elements' indices
+
+Ixorder : B.StrictTotalOrder _ _ _
+Ixorder = record
+  { _≈_ = _≈_
+  ; _<_ = λ x y → toIx x Fin.< toIx y
+  ; isStrictTotalOrder = record
+    { isEquivalence = isEquivalence
+    ; trans = Fin.<-trans
+    ; compare = compare
+    }
+  }
+  where
+  compare : Trichotomous _≈_ (λ x y → toIx x Fin.< toIx y)
+  compare x y with B.StrictTotalOrder.compare (Fin.<-strictTotalOrder N) (toIx x) (toIx y)
+  compare x y | B.tri< a ¬b ¬c = B.tri< a (¬b ∘ cong (LeftInverse.to ontoFin)) ¬c
+  compare x y | B.tri≈ ¬a b ¬c = B.tri≈ ¬a (LeftInverse.injective ontoFin b) ¬c
+  compare x y | B.tri> ¬a ¬b c = B.tri> ¬a (¬b ∘ cong (LeftInverse.to ontoFin)) c
+
+
 -- Equality between members of a finite set is decidable.
 
 _≟_ : B.Decidable _≈_
-x ≟ y with toIx x Fin.≟ toIx y
-x ≟ y | yes p = yes (
-  begin
-    x                ≈⟨ sym (fromIx-toIx _) ⟩
-    fromIx (toIx x)  ≈⟨ cong (LeftInverse.from ontoFin) p ⟩
-    fromIx (toIx y)  ≈⟨ fromIx-toIx _ ⟩
-    y                ∎)
-  where open EqReasoning setoid
-x ≟ y | no ¬p = no (¬p ∘ cong (LeftInverse.to ontoFin))
-
+_≟_ = B.StrictTotalOrder._≟_ Ixorder

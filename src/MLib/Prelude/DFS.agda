@@ -6,6 +6,8 @@ module MLib.Prelude.DFS
   {_<_ : V → V → Set p} (isStrictTotalOrder : IsStrictTotalOrder _≡_ _<_)
   where
 
+open import MLib.Prelude.Path
+
 import Data.AVL isStrictTotalOrder as Tree
 open Tree using (Tree)
 
@@ -13,11 +15,6 @@ open Tree using (Tree)
 -- A (directed) graph is a map from vertices to the list of edges out of that
 -- vertex.
 Graph = Tree (λ x → List (∃ λ y → x ⇒ y))
-
-
-data Path (x y : V) : Set (v ⊔ˡ e) where
-  edge :  (edge : x ⇒ y) → Path x y
-  connect : ∀ {z} (p₁ : Path x z) (p₂ : Path z y) → Path x y
 
 
 private
@@ -81,7 +78,7 @@ private
 module _ (graph : Graph) where
 
   private
-    PathsFrom = List ∘ ∃ ∘ Path
+    PathsFrom = List ∘ ∃ ∘ Path _⇒_
 
     -- Calculates paths from the given source to every reachable target not in
     -- the seen set. Returns the new seen set, the list of paths found, and
@@ -128,7 +125,7 @@ module _ (graph : Graph) where
   -- Given a source vertex S, finds all vertices T such that there is a path
   -- from S to T, and returns the path. No target vertex is returned more than
   -- once.
-  allTargetsFrom : (source : V) → List (∃ (Path source))
+  allTargetsFrom : (source : V) → List (∃ (Path _⇒_ source))
   allTargetsFrom source =
     let _ , seen = Seen.forGraph graph
     in maybe id [] (runMonadDfs (pathsFromSource source) seen)
@@ -136,9 +133,9 @@ module _ (graph : Graph) where
 module _ (graph : Graph) {dest} (isDest : ∀ v → Dec (v ≡ dest)) where
 
   private
-    findDestFrom : ∀ {n} (source : V) → MonadDfs n (Maybe (Path source dest))
-    findViaEdges : ∀ {n} {source : V} → List (∃ (λ inter → source ⇒ inter)) → MonadDfs n (Maybe (Path source dest))
-    findViaEdge : ∀ {n} {source inter : V} → source ⇒ inter → MonadDfs n (Maybe (Path source dest))
+    findDestFrom : ∀ {n} (source : V) → MonadDfs n (Maybe (Path _⇒_ source dest))
+    findViaEdges : ∀ {n} {source : V} → List (∃ (λ inter → source ⇒ inter)) → MonadDfs n (Maybe (Path _⇒_ source dest))
+    findViaEdge : ∀ {n} {source inter : V} → source ⇒ inter → MonadDfs n (Maybe (Path _⇒_ source dest))
 
     -- The base case of induction on the size of the seen set. This is only here
     -- to satisfy the termination checker.
@@ -172,7 +169,7 @@ module _ (graph : Graph) {dest} (isDest : ∀ v → Dec (v ≡ dest)) where
   -- Given a source vertex S, finds all vertices T such that there is a path
   -- from S to T, and returns the path. No target vertex is returned more than
   -- once.
-  findDest : (source : V) → Maybe (Path source dest)
+  findDest : (source : V) → Maybe (Path _⇒_ source dest)
   findDest source =
     let _ , seen = Seen.forGraph graph
     in runMonadDfs (findDestFrom source) seen

@@ -6,6 +6,7 @@ open import MLib.Prelude.Finite
 import MLib.Prelude.Finite.Properties as FiniteProps
 open import MLib.Algebra.PropertyCode.RawStruct
 open import MLib.Algebra.Instances
+open import MLib.Prelude.DFS.ViaNat
 
 import Relation.Unary as U using (Decidable)
 open import Relation.Binary as B using (Setoid)
@@ -27,8 +28,8 @@ open import Data.Bool.Properties using (∧-isCommutativeMonoid; ∧-idem; T-≡
 open import Category.Applicative
 
 open import Function.Inverse using (_↔_)
-open import Function.LeftInverse using (_↞_; LeftInverse)
-open import Function.Equality using (_⟶_; _⟨$⟩_; cong)
+open import Function.LeftInverse using (_↞_; LeftInverse) renaming (_∘_ to _∘ⁱ_)
+open import Function.Equality using (_⟶_; _⇨_; _⟨$⟩_; cong)
 open import Function.Equivalence using (Equivalence)
 
 open Table using (Table)
@@ -49,13 +50,23 @@ module BoolExtra where
       }
     }
 
-  MP : ∀ {x y} → T (not x ∨ y) → T x → T y
+  _⇒_ : Bool → Bool → Bool
+  false ⇒ false = true
+  false ⇒ true = true
+  true ⇒ false = false
+  true ⇒ true = true
+
+  true⇒ : ∀ {x} → true ⇒ x ≡ x
+  true⇒ {false} = ≡.refl
+  true⇒ {true} = ≡.refl
+
+  MP : ∀ {x y} → T (x ⇒ y) → T x → T y
   MP {false} {false} _ ()
   MP {false} {true} _ _ = tt
   MP {true} {false} ()
   MP {true} {true} _ _ = tt
 
-  abs : ∀ {x y} → (T x → T y) → T (not x ∨ y)
+  abs : ∀ {x y} → (T x → T y) → T (x ⇒ y)
   abs {false} {false} f = tt
   abs {false} {true} f = tt
   abs {true} {false} f = f tt
@@ -275,10 +286,53 @@ open Properties public
 module _ {k} {code : Code k} where
   open Code code using (K; module Property)
 
+  Property-Func : Setoid _ _
+  Property-Func = Property.setoid ⇨ ≡.setoid Bool
+
+  Properties-setoid : Setoid _ _
+  Properties-setoid = record
+    { Carrier = Properties code
+    ; _≈_ = λ Π Π′ → hasPropertyF Π ≈ hasPropertyF Π′
+    ; isEquivalence = record
+      { refl = λ {Π} → refl {hasPropertyF Π}
+      ; sym = λ {Π} {Π′} → sym {hasPropertyF Π} {hasPropertyF Π′}
+      ; trans = λ {Π} {Π′} {Π′′} → trans {hasPropertyF Π} {hasPropertyF Π′} {hasPropertyF Π′′}
+      }
+    }
+    where
+    open Setoid Property-Func
+
+  Properties↞Func : LeftInverse Properties-setoid Property-Func
+  Properties↞Func = record
+    { to = record { _⟨$⟩_ = hasPropertyF ; cong = id }
+    ; from = record { _⟨$⟩_ = properties ∘ _⟨$⟩_ ; cong = id }
+    ; left-inverse-of = left-inverse-of
+    }
+    where
+    open Setoid Property.setoid using (_≈_)
+    left-inverse-of : ∀ (Π : Properties code) {π π′} → π ≈ π′ → hasProperty Π π ≡ hasProperty Π π′
+    left-inverse-of Π (≡.refl , p) rewrite All′.PW-≡ K p = ≡.refl
+
+  Properties↞ℕ : LeftInverse Properties-setoid (≡.setoid ℕ)
+  Properties↞ℕ = asNat Property.finiteSet ∘ⁱ Properties↞Func
+
   -- Evaluates to 'true' only when every property is present.
 
   hasAll : Properties code → Bool
   hasAll Π = Property.foldMap BoolExtra.∧-idempotentCommutativeMonoid (hasProperty Π)
+
+  implies : Properties code → Properties code → Bool
+  implies Π₁ Π₂ = Property.foldMap BoolExtra.∧-idempotentCommutativeMonoid (λ π → hasProperty Π₁ π BoolExtra.⇒ hasProperty Π₂ π)
+
+  -- The full set of properties
+
+  True : Properties code
+  hasProperty True _ = true
+
+  -- The empty set of properties
+
+  False : Properties code
+  hasProperty False _ = false
 
 
   -- Inhabited if the given property is present. Suitable for use as an instance
@@ -291,44 +345,49 @@ module _ {k} {code : Code k} where
 
   open _∈ₚ_
 
+  -- Inhabited if the first set of properties implies the second. Suitable for
+  -- use as an instance argument but difficult to work with.
 
-  -- Inhabited if all the properties are present. Suitable for use as an
-  -- instance argument but difficult to work with.
-
-  record ⊨ (Π : Properties code) : Set where
+  record _⇒ₚ_ (Π₁ Π₂ : Properties code) : Set where
     instance constructor fromTruth
     field
-      truth : T (hasAll Π)
+      truth : T (implies Π₁ Π₂)
+
+  ⊨ : Properties code → Set
+  ⊨ Π = True ⇒ₚ Π
 
 
-  -- Inhabited if all the properties are present. Unsuitable for use as an
-  -- instance argument, but easy to work with.
+  -- Inhabited if the first set of properties implies the second. Unsuitable for
+  -- use as an instance argument, but easy to work with.
+
+  _→ₚ_ : Properties code → Properties code → Set k
+  Π₁ →ₚ Π₂ = ∀ π → π ∈ₚ Π₁ → π ∈ₚ Π₂
 
   ⊢ : Properties code → Set k
-  ⊢ Π = ∀ π → π ∈ₚ Π
+  ⊢ Π = True →ₚ Π
 
+  -- The two forms of implication are equivalent to each other, as we would hope
 
-  -- The two forms of truth are equivalent to each other, as we would hope.
-
-  ⊢→⊨ : {Π : Properties code} → ⊢ Π → ⊨ Π
-  ⊢→⊨ {Π} p = ⊨.fromTruth (Equivalence.from T-≡ ⟨$⟩ hasAll-true)
+  →ₚ-⇒ₚ : {Π₁ Π₂ : Properties code} → Π₁ →ₚ Π₂ → Π₁ ⇒ₚ Π₂
+  →ₚ-⇒ₚ {Π₁} {Π₂} p = _⇒ₚ_.fromTruth (Equivalence.from T-≡ ⟨$⟩ impl-true)
     where
-    hasProperty-const : ∀ π → hasProperty Π π ≡ true
-    hasProperty-const π = Equivalence.to T-≡ ⟨$⟩ (p π .truth)
-
     open ≡.Reasoning
+
     icm = BoolExtra.∧-idempotentCommutativeMonoid
 
-    hasAll-true : hasAll Π ≡ true
-    hasAll-true = begin
-      hasAll Π                                  ≡⟨⟩
-      Property.foldMap icm (hasProperty Π)      ≡⟨ Property.foldMap-cong icm hasProperty-const  ⟩
-      Property.foldMap icm (λ _ → true)         ≡⟨ proj₁ (IdempotentCommutativeMonoid.identity icm) _ ⟩
-      true ∧ Property.foldMap icm (λ _ → true)  ≡⟨ Property.foldMap-const icm ⟩
-      true                                      ∎
+    impl-pointwise : ∀ π → hasProperty Π₁ π BoolExtra.⇒ hasProperty Π₂ π ≡ true
+    impl-pointwise π = Equivalence.to T-≡ ⟨$⟩ BoolExtra.abs (truth ∘ p π ∘ fromTruth)
 
-  ⊨→⊢ : {Π : Properties code} → ⊨ Π → ⊢ Π
-  ⊨→⊢ {Π} t π = fromTruth (Equivalence.from T-≡ ⟨$⟩ hasProperty-true)
+    impl-true : implies Π₁ Π₂ ≡ true
+    impl-true = begin
+      implies Π₁ Π₂                 ≡⟨⟩
+      Property.foldMap icm (λ π → hasProperty Π₁ π BoolExtra.⇒ hasProperty Π₂ π) ≡⟨ Property.foldMap-cong icm impl-pointwise ⟩
+      Property.foldMap icm (λ _ → true) ≡⟨ proj₁ (IdempotentCommutativeMonoid.identity icm) _ ⟩
+      true ∧ Property.foldMap icm (λ _ → true) ≡⟨ Property.foldMap-const icm ⟩
+      true ∎
+
+  ⇒ₚ-→ₚ : {Π₁ Π₂ : Properties code} → Π₁ ⇒ₚ Π₂ → Π₁ →ₚ Π₂
+  ⇒ₚ-→ₚ {Π₁} {Π₂} (fromTruth p) π (fromTruth q) = fromTruth (BoolExtra.MP (Equivalence.from T-≡ ⟨$⟩ impl-π) q)
     where
       i = Property.toIx π
 
@@ -336,26 +395,27 @@ module _ {k} {code : Code k} where
       icm = BoolExtra.∧-idempotentCommutativeMonoid
       module ∧ = IdempotentCommutativeMonoid icm
 
-      hasAll-true : hasAll Π ≡ true
-      hasAll-true = Equivalence.to T-≡ ⟨$⟩ ⊨.truth t
+      implies-true : implies Π₁ Π₂ ≡ true
+      implies-true = Equivalence.to T-≡ ⟨$⟩ p
 
-      hasProperty-true : hasProperty Π π ≡ true
-      hasProperty-true = begin
-        hasProperty Π π            ≡⟨ ≡.sym (proj₂ ∧.identity _ ) ⟩
-        hasProperty Π π ∧ true     ≡⟨ ∧.∙-cong (≡.refl {x = hasProperty Π π}) (≡.sym hasAll-true)  ⟩
-        hasProperty Π π ∧ hasAll Π ≡⟨ Property.enumTable-complete icm (hasPropertyF Π) π ⟩
-        hasAll Π                   ≡⟨ hasAll-true ⟩
-        true                       ∎
+      implies-F : Property.setoid ⟶ ≡.setoid Bool
+      implies-F = record
+        { _⟨$⟩_ = λ π → hasProperty Π₁ π BoolExtra.⇒ hasProperty Π₂ π
+        ; cong = λ { {π} {π′} p → ≡.cong₂ BoolExtra._⇒_ (cong (hasPropertyF Π₁) p) (cong (hasPropertyF Π₂) p)}
+        }
 
-  -- The empty set of properties
-
-  empty : Properties code
-  hasProperty empty _ = false
+      impl-π : hasProperty Π₁ π BoolExtra.⇒ hasProperty Π₂ π ≡ true
+      impl-π = begin
+        hasProperty Π₁ π BoolExtra.⇒ hasProperty Π₂ π                   ≡⟨ ≡.sym (proj₂ ∧.identity _) ⟩
+        (hasProperty Π₁ π BoolExtra.⇒ hasProperty Π₂ π) ∧ true ≡⟨ ∧.∙-cong (≡.refl {x = hasProperty Π₁ π BoolExtra.⇒ hasProperty Π₂ π}) (≡.sym implies-true) ⟩
+        (hasProperty Π₁ π BoolExtra.⇒ hasProperty Π₂ π) ∧ implies Π₁ Π₂ ≡⟨ Property.enumTable-complete icm implies-F π ⟩
+        implies Π₁ Π₂ ≡⟨ implies-true ⟩
+        true ∎
 
   -- Form a set of properties from a single property
 
   singleton : Property K → Properties code
-  singleton π = properties λ π′ → ⌊ π Property.≟ π′ ⌋
+  hasProperty (singleton π) π′ = ⌊ π Property.≟ π′ ⌋
 
   -- Union of two sets of properties
 
@@ -365,69 +425,63 @@ module _ {k} {code : Code k} where
   -- Form a set of properties from a list of properties
 
   fromList : List (Property K) → Properties code
-  fromList = List.foldr (_∪ₚ_ ∘ singleton) empty
+  fromList = List.foldr (_∪ₚ_ ∘ singleton) False
 
   π-∈ₚ-singleton : ∀ {π} → π ∈ₚ singleton π
   truth (π-∈ₚ-singleton {π}) with π Property.≟ π
   truth (π-∈ₚ-singleton {π}) | yes p = _
   truth (π-∈ₚ-singleton {π}) | no ¬p = ¬p Property.refl
 
-  _⇒ₚ_ : Properties code → Properties code → Properties code
-  hasProperty (Π₁ ⇒ₚ Π₂) π = not (hasProperty Π₁ π) ∨ hasProperty Π₂ π
+  _⊆_ : Properties code → Properties code → Properties code
+  hasProperty (Π₁ ⊆ Π₂) π = not (hasProperty Π₁ π) ∨ hasProperty Π₂ π
 
-  ⇒ₚ-MP′ : ∀ {Π₁ Π₂} → ⊢ (Π₁ ⇒ₚ Π₂) → ⊢ Π₁ → ⊢ Π₂
-  ⇒ₚ-MP′ {Π₁} {Π₂} f g π = fromTruth (BoolExtra.MP (truth (f π)) (truth (g π)))
+  →ₚ-trans : ∀ {Π₁ Π₂ Π₃} → Π₁ →ₚ Π₂ → Π₂ →ₚ Π₃ → Π₁ →ₚ Π₃
+  →ₚ-trans {Π₁} p q π = q π ∘ p π
 
-  ⇒ₚ-MP : ∀ {Π₁ Π₂} → ⊨ (Π₁ ⇒ₚ Π₂) → ⊨ Π₁ → ⊨ Π₂
-  ⇒ₚ-MP has⇒ hasΠ₁ = ⊢→⊨ (⇒ₚ-MP′ (⊨→⊢ has⇒) (⊨→⊢ hasΠ₁))
+  ⇒ₚ-trans : ∀ {Π₁ Π₂ Π₃} → Π₁ ⇒ₚ Π₂ → Π₂ ⇒ₚ Π₃ → Π₁ ⇒ₚ Π₃
+  ⇒ₚ-trans {Π₁} p q = →ₚ-⇒ₚ (→ₚ-trans (⇒ₚ-→ₚ p) (⇒ₚ-→ₚ q))
 
+  ⇒ₚ-MP : ∀ {Π Π′ π} → π ∈ₚ Π′ → Π′ ⇒ₚ Π → π ∈ₚ Π
+  ⇒ₚ-MP {Π = Π} {Π′} {π} hasπ has⇒ = ⇒ₚ-→ₚ has⇒ π hasπ
 
-  -- ⇒ₚ-trans : ∀ {Π₁ Π₂ Π₃} → ⊨ (Π₁ ⇒ₚ Π₂) → ⊨ (Π₂ ⇒ₚ Π₃) → ⊨ (Π₁ ⇒ₚ Π₃)
-  -- ⇒ₚ-trans {Π₁} p q = ?
+-- module _ {k} {code : Code k} where
+--   open Code code using (K; module Property)
 
+--   -- subcodeInjectionMapper : ∀ {k′} {K′ : ℕ → Set k′} → Code.SubcodeInjection code K′ → ∀ {n} → K n → K′ n
+--   -- subcodeInjectionMapper inj {n} with inj n
+--   -- subcodeInjectionMapper inj {n} | inj₁ ¬k′ = {!!}
+--   -- subcodeInjectionMapper inj {n} | inj₂ y = {!!}
 
-  Has⇒ₚ : ∀ {Π Π′ π} → π ∈ₚ Π′ → ⊨ (Π′ ⇒ₚ Π) → π ∈ₚ Π
-  Has⇒ₚ {Π = Π} {Π′} {π} hasπ has⇒ =
-    fromTruth (BoolExtra.MP (truth (⊨→⊢ has⇒ π)) (truth hasπ))
+--   -- subcodeMapProperty : ∀ {k′} {K′ : ℕ → Set k′} → Code.SubcodeInjection code K′ → Property K → Property K′
+--   -- subcodeMapProperty inj π = {!!}
 
-module _ {k} {code : Code k} where
-  open Code code using (K; module Property)
+--   -- subcodeProperties :
+--   --   Properties code
+--   --   → ∀ {k′} {K′ : ℕ → Set k′} (inj : Code.SubcodeInjection code K′)
+--   --   → Properties (Code.subcode code inj)
+--   -- hasProperty (subcodeProperties Π inj) π = {!!}
+--     -- hasProperty Π (mapProperty (LeftInverse.to inj ⟨$⟩_) π)
 
-  -- subcodeInjectionMapper : ∀ {k′} {K′ : ℕ → Set k′} → Code.SubcodeInjection code K′ → ∀ {n} → K n → K′ n
-  -- subcodeInjectionMapper inj {n} with inj n
-  -- subcodeInjectionMapper inj {n} | inj₁ ¬k′ = {!!}
-  -- subcodeInjectionMapper inj {n} | inj₂ y = {!!}
+--   -- fromSubcode :
+--   --   ∀ {k′} {K′ : ℕ → Set k′} {Π : Properties code} {π : Property K′}
+--   --   (inj : ∀ {n} → LeftInverse (≡.setoid (K′ n)) (K.setoid n))
+--   --   → π ∈ₚ subcodeProperties Π inj → mapProperty (LeftInverse.to inj ⟨$⟩_) π ∈ₚ Π
+--   -- fromSubcode inj (fromTruth truth) = fromTruth truth
 
-  -- subcodeMapProperty : ∀ {k′} {K′ : ℕ → Set k′} → Code.SubcodeInjection code K′ → Property K → Property K′
-  -- subcodeMapProperty inj π = {!!}
+--   -- module _ {c ℓ} (rawStruct : RawStruct K c ℓ) where
+--   --   open RawStruct rawStruct
 
-  -- subcodeProperties :
-  --   Properties code
-  --   → ∀ {k′} {K′ : ℕ → Set k′} (inj : Code.SubcodeInjection code K′)
-  --   → Properties (Code.subcode code inj)
-  -- hasProperty (subcodeProperties Π inj) π = {!!}
-    -- hasProperty Π (mapProperty (LeftInverse.to inj ⟨$⟩_) π)
-
-  -- fromSubcode :
-  --   ∀ {k′} {K′ : ℕ → Set k′} {Π : Properties code} {π : Property K′}
-  --   (inj : ∀ {n} → LeftInverse (≡.setoid (K′ n)) (K.setoid n))
-  --   → π ∈ₚ subcodeProperties Π inj → mapProperty (LeftInverse.to inj ⟨$⟩_) π ∈ₚ Π
-  -- fromSubcode inj (fromTruth truth) = fromTruth truth
-
-  -- module _ {c ℓ} (rawStruct : RawStruct K c ℓ) where
-  --   open RawStruct rawStruct
-
-  --   reinterpret :
-  --     ∀ {k′} {K′ : ℕ → Set k′} (f : ∀ {n} → K′ n → K n) (π : Property K′)
-  --     → ⟦ mapProperty f π ⟧P rawStruct → ⟦ π ⟧P (subRawStruct f)
-  --   reinterpret f (associative      , ∙ ∷ [])     = id
-  --   reinterpret f (commutative      , ∙ ∷ [])     = id
-  --   reinterpret f (idempotent       , ∙ ∷ [])     = id
-  --   reinterpret f (selective        , ∙ ∷ [])     = id
-  --   reinterpret f (cancellative     , ∙ ∷ [])     = id
-  --   reinterpret f (leftIdentity     , α ∷ ∙ ∷ []) = id
-  --   reinterpret f (rightIdentity    , α ∷ ∙ ∷ []) = id
-  --   reinterpret f (leftZero         , α ∷ ∙ ∷ []) = id
-  --   reinterpret f (rightZero        , α ∷ ∙ ∷ []) = id
-  --   reinterpret f (distributesOverˡ , * ∷ + ∷ []) = id
-  --   reinterpret f (distributesOverʳ , * ∷ + ∷ []) = id
+--   --   reinterpret :
+--   --     ∀ {k′} {K′ : ℕ → Set k′} (f : ∀ {n} → K′ n → K n) (π : Property K′)
+--   --     → ⟦ mapProperty f π ⟧P rawStruct → ⟦ π ⟧P (subRawStruct f)
+--   --   reinterpret f (associative      , ∙ ∷ [])     = id
+--   --   reinterpret f (commutative      , ∙ ∷ [])     = id
+--   --   reinterpret f (idempotent       , ∙ ∷ [])     = id
+--   --   reinterpret f (selective        , ∙ ∷ [])     = id
+--   --   reinterpret f (cancellative     , ∙ ∷ [])     = id
+--   --   reinterpret f (leftIdentity     , α ∷ ∙ ∷ []) = id
+--   --   reinterpret f (rightIdentity    , α ∷ ∙ ∷ []) = id
+--   --   reinterpret f (leftZero         , α ∷ ∙ ∷ []) = id
+--   --   reinterpret f (rightZero        , α ∷ ∙ ∷ []) = id
+--   --   reinterpret f (distributesOverˡ , * ∷ + ∷ []) = id
+--   --   reinterpret f (distributesOverʳ , * ∷ + ∷ []) = id

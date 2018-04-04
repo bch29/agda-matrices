@@ -44,6 +44,7 @@ open List using (List; _∷_; []) hiding (module List) public
 module Table where
   open import Data.Table public
   open import Data.Table.Properties public
+  open import Data.Table.Relation.Equality public
 open Table using (Table; tabulate; lookup) hiding (module Table) public
 
 --------------------------------------------------------------------------------

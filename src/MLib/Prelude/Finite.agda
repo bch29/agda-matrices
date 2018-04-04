@@ -16,7 +16,7 @@ import Relation.Binary.Indexed as I
 import Relation.Unary as U using (Decidable)
 open import Function.LeftInverse using (LeftInverse; _↞_) renaming (_∘_ to _ⁱ∘_)
 open import Function.Inverse using (Inverse; _↔_)
-open import Function.Equality as FE using (_⟶_; _⟨$⟩_; cong)
+open import Function.Equality as FE using (_⟶_; _⇨_; _⟨$⟩_; cong)
 open import Function.Related using () renaming (module EquationalReasoning to RelReasoning)
 
 import Data.Product.Relation.Pointwise.Dependent as ΣR
@@ -246,6 +246,91 @@ module All′ {a} {A : Set a} where
     PW-≡ [] = ≡.refl
     PW-≡ (p ∷ q) = ≡.cong₂ _∷_ p (PW-≡ q)
 
+-- module _ {c ℓ} (finiteSet : FiniteSet c ℓ) where
+--   private
+--     module A = FiniteSet finiteSet
+
+--   open A using (_≈_) renaming (Carrier to A)
+
+--   open IsFiniteSetoid
+--   open LeftInverse
+
+--   private
+--     boolToFin : Bool → Fin 2
+--     boolToFin false = Fin.zero
+--     boolToFin true = Fin.suc Fin.zero
+
+--     open Nat using (zero; suc; _^_; _+_; _*_)
+
+--     _ℕ+_ : ∀ {n} (m : ℕ) → Fin n → Fin (m + n)
+--     zero ℕ+ i = i
+--     suc m ℕ+ i = Fin.suc (m ℕ+ i)
+
+--     -- ℕ*-+ m "i" "k" = "i + m * k"
+--     ℕ*-+′ : ∀ {n} (m : ℕ) → Fin m → Fin n → Fin (n * m)
+--     ℕ*-+′ {zero} m i ()
+--     ℕ*-+′ {suc n} m i Fin.zero = Fin.inject+ (n * m) i
+--     ℕ*-+′ {suc n} m i (Fin.suc k) = m ℕ+ (ℕ*-+′ m i k)
+
+--     -- ℕ*-+ m "i" "k" = "i + m * k"
+--     ℕ*-+ : ∀ {n} m → Fin m → Fin n → Fin (m * n)
+--     ℕ*-+ m i k = ≡.subst Fin (Nat.*-comm _ m) (ℕ*-+′ m i k)
+
+--     from-n-ary : ∀ {n m} → Table (Fin n) m → Fin (n ^ m)
+--     from-n-ary {m = zero} _ = Fin.zero -- an empty table represents an empty n-ary string
+--     from-n-ary {n} {suc m} t = ℕ*-+ n (Table.lookup t Fin.zero) (from-n-ary (Table.tail t))
+
+--     from-n-ary-cong : ∀ {n m} (t t′ : Table (Fin n) m) → t Table.≗ t′ → from-n-ary t ≡ from-n-ary t′
+--     from-n-ary-cong {m = zero} t t′ eq = ≡.refl
+--     from-n-ary-cong {n} {suc m} t t′ eq = ≡.cong₂ (ℕ*-+ n) (eq Fin.zero) (from-n-ary-cong (Table.tail t) (Table.tail t′) (eq ∘ Fin.suc))
+
+--     -- div-rem m i = "i % m" , "i / m"
+--     div-rem : ∀ {n} m → Fin (m * n) → Fin m × Fin n
+--     div-rem zero ()
+--     div-rem {zero} (suc m) i with ≡.subst Fin (Nat.*-zeroʳ m) i
+--     div-rem {zero} (suc m) i | ()
+--     div-rem {suc n} (suc m) Fin.zero = Fin.zero , Fin.zero
+--     div-rem {suc n} (suc m) (Fin.suc i) = {!!}
+
+--     to-n-ary : ∀ {n m} → Fin (n ^ m) → Table (Fin n) m
+--     to-n-ary {m = zero} _ = tabulate λ ()
+--     to-n-ary {n} {suc m} k =
+--       let r , d = div-rem n k
+--           ind = to-n-ary {n} {m} d
+--       in tabulate λ
+--          { Fin.zero → r
+--          ; (Fin.suc i) → lookup ind i
+--          }
+
+--   boolF-isFiniteSetoid : IsFiniteSetoid (A.setoid ⇨ ≡.setoid Bool) (2 Nat.^ A.N)
+--   _⟨$⟩_ (to (ontoFin boolF-isFiniteSetoid)) f =
+--     let digits = Table.map (boolToFin ∘ (f ⟨$⟩_)) A.enumTable
+--     in from-n-ary digits
+--   cong (to (ontoFin boolF-isFiniteSetoid)) {f} {f′} p =
+--     let t = Table.map (boolToFin ∘ (f ⟨$⟩_)) A.enumTable
+--     in from-n-ary-cong t _ λ _ → ≡.cong boolToFin (p A.refl)
+--   _⟨$⟩_ (_⟨$⟩_ (from (ontoFin boolF-isFiniteSetoid)) i) x = {!!}
+--   cong (_⟨$⟩_ (from (ontoFin boolF-isFiniteSetoid)) i) = {!!}
+--   cong (from (ontoFin boolF-isFiniteSetoid)) ≡.refl = {!≡.cong ?!}
+--   left-inverse-of (ontoFin boolF-isFiniteSetoid) = {!!}
+
+-- module _ {c₁ ℓ₁ c₂ ℓ₂} (A-finiteSet : FiniteSet c₁ ℓ₁) (B-finiteSet : FiniteSet c₂ ℓ₂) where
+--   private
+--     module A = FiniteSet A-finiteSet
+--     module B = FiniteSet B-finiteSet
+
+--   open A using (_≈_) renaming (Carrier to A)
+--   open B using () renaming (Carrier to B; _≈_ to _≈′_)
+
+--   open IsFiniteSetoid
+--   open LeftInverse
+
+--   function-isFiniteSetoid : IsFiniteSetoid (A.setoid ⇨ B.setoid) (B.N Nat.^ A.N)
+--   _⟨$⟩_ (to (ontoFin function-isFiniteSetoid)) f = {!!}
+--   cong (to (ontoFin function-isFiniteSetoid)) = {!!}
+--   _⟨$⟩_ (from (ontoFin function-isFiniteSetoid)) i = {!!}
+--   cong (from (ontoFin function-isFiniteSetoid)) = {!!}
+--   left-inverse-of (ontoFin function-isFiniteSetoid) = {!!}
 
 -- TODO: Prove dependent function spaces with finite domain and codomain are
 -- finite sets, and recast as an instance of that.
