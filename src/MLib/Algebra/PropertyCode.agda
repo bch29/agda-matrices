@@ -6,6 +6,7 @@ open import MLib.Algebra.Instances
 
 open import MLib.Algebra.PropertyCode.RawStruct public
 open import MLib.Algebra.PropertyCode.Core public
+open import MLib.Algebra.PropertyCode.Reflection
 
 import Relation.Unary as U using (Decidable)
 open import Relation.Binary as B using (Setoid)
@@ -33,23 +34,25 @@ record Struct {k} (code : Code k) c ℓ : Set (sucˡ (c ⊔ˡ ℓ ⊔ˡ k)) wher
   field
     reify : ∀ {π} → π ∈ₚ Π → ⟦ π ⟧P rawStruct
 
-  Has : Property K → Set
-  Has π = π ∈ₚ Π
-
   HasEach : (Π′ : Properties code) → Set
   HasEach Π′ = Π′ ⇒ₚ Π
 
   HasList : List (Property K) → Set
   HasList = HasEach ∘ fromList
 
-  use : ∀ π ⦃ hasπ : Has π ⦄ → ⟦ π ⟧P rawStruct
-  use _ ⦃ hasπ ⦄ = reify hasπ
+  Has : Property K → Set
+  Has π = HasEach (singleton π)
 
-  from : ∀ Π′ π ⦃ hasΠ′ : HasEach Π′ ⦄ ⦃ hasπ : π ∈ₚ Π′ ⦄ → ⟦ π ⟧P rawStruct
-  from _ _ ⦃ hasΠ′ ⦄ ⦃ hasπ ⦄ = use _ ⦃ ⇒ₚ-MP hasπ hasΠ′ ⦄
+  -- use : ∀ π ⦃ hasπ : Has π ⦄ → ⟦ π ⟧P rawStruct
+  -- use _ ⦃ hasπ ⦄ = reify hasπ
 
-  from′ : ∀ πs π ⦃ hasπs : HasList πs ⦄ ⦃ hasπ : π ∈ₚ fromList πs ⦄ → ⟦ π ⟧P rawStruct
-  from′ _ = from _
+  -- from : ∀ Π′ π ⦃ hasΠ′ : HasEach Π′ ⦄ ⦃ hasπ : π ∈ₚ Π′ ⦄ → ⟦ π ⟧P rawStruct
+  -- from _ _ ⦃ hasΠ′ ⦄ ⦃ hasπ ⦄ = use _ ⦃ ⇒ₚ-MP hasπ hasΠ′ ⦄
+
+  -- from′ : ∀ πs π ⦃ hasπs : HasList πs ⦄ ⦃ hasπ : π ∈ₚ fromList πs ⦄ → ⟦ π ⟧P rawStruct
+  -- from′ _ = from _
+
+  module Macros = UseProperty rawStruct reify
 
   -- subStruct : ∀ {k′} {K′ : ℕ → Set k′} (inj : ∀ {n} → LeftInverse (≡.setoid (K′ n)) (K.setoid n)) → Struct (subCode inj) c ℓ
   -- subStruct {K′ = K′} inj = record

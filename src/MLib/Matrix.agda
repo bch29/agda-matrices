@@ -4,7 +4,7 @@ open import MLib.Prelude
 open import MLib.Algebra.PropertyCode
 open import MLib.Algebra.PropertyCode.Structures
 
-open import Data.Vec.Relation.InductivePointwise using (Pointwise; []; _∷_)
+open import Data.Vec.Relation.Pointwise.Inductive using (Pointwise; []; _∷_)
 
 open Algebra using (CommutativeMonoid)
 
@@ -17,7 +17,7 @@ module _ {ℓ} where
 
 module _ {c ℓ} (struct : Struct bimonoidCode c ℓ) where
   module S = Struct struct renaming (Carrier to S; _≈_ to _≈′_)
-  open S using (S; _≈′_; _⟨_⟩_; ⟦_⟧; from; from′; use; Has; HasList; HasEach)
+  open S using (S; _≈′_; _⟨_⟩_; ⟦_⟧; Has; HasList; HasEach; module Macros)
 
   module _ {m n} where
 
@@ -51,17 +51,18 @@ module _ {c ℓ} (struct : Struct bimonoidCode c ℓ) where
     ⊕-cong : Congruent₂ _⊕_
     ⊕-cong p q = λ i j → S.congⁿ + (p i j ∷ q i j ∷ [])
 
-    assoc : ⦃ _ : Has (associative on +) ⦄ → Associative _⊕_
-    assoc A B C i j = use (associative on +) (A i j) (B i j) (C i j)
+    -- assoc : ⦃ _ : Has (associative on +) ⦄ → Associative _⊕_
+    -- assoc A B C i j = use (associative on +) (A i j) (B i j) (C i j)
 
     0● : Matrix S m n
     0● _ _ = ⟦ 0# ⟧
 
-    identityˡ : ⦃ _ : Has (0# is leftIdentity for +) ⦄ → LeftIdentity 0● _⊕_
-    identityˡ A i j = use (0# is leftIdentity for +) (A i j)
+    -- identityˡ : ⦃ _ : Has (0# is leftIdentity for +) ⦄ → LeftIdentity 0● _⊕_
+    -- identityˡ A i j = use (0# is leftIdentity for +) (A i j)
 
-    identityʳ : ⦃ _ : Has (0# is rightIdentity for +) ⦄ → RightIdentity 0● _⊕_
-    identityʳ A i j = use (0# is rightIdentity for +) (A i j)
+    identityʳ : ⦃ hl : Has (0# is rightIdentity for +) ⦄ → RightIdentity 0● _⊕_
+    identityʳ A i j = S.Macros.use (0# is rightIdentity for +)
+      -- use (0# is rightIdentity for +) (A i j)
 
 
     -- *-assoc : ⦃ _ : HasList (* distributesOverˡ + ∷ * distributesOverʳ + ∷ []) ⦄ → Associative _⊛_

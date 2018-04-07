@@ -7,6 +7,9 @@ module MLib.Prelude.DFS
   where
 
 open import MLib.Prelude.Path
+open Bool using (T)
+open import Function.Equivalence using (Equivalence)
+open import Function.Equality using (_⟨$⟩_)
 
 import Data.AVL isStrictTotalOrder as Tree
 open Tree using (Tree)
@@ -130,46 +133,58 @@ module _ (graph : Graph) where
     let _ , seen = Seen.forGraph graph
     in maybe id [] (runMonadDfs (pathsFromSource source) seen)
 
-module _ (graph : Graph) {dest} (isDest : ∀ v → Dec (v ≡ dest)) where
+
+module _ (graph : Graph) (matches : V → Bool) where
 
   private
-    findDestFrom : ∀ {n} (source : V) → MonadDfs n (Maybe (Path _⇒_ source dest))
-    findViaEdges : ∀ {n} {source : V} → List (∃ (λ inter → source ⇒ inter)) → MonadDfs n (Maybe (Path _⇒_ source dest))
-    findViaEdge : ∀ {n} {source inter : V} → source ⇒ inter → MonadDfs n (Maybe (Path _⇒_ source dest))
+    findMatchingFrom : ∀ {n} (source : V) → MonadDfs n (Maybe (∃ λ dest → Path _⇒_ source dest × T (matches dest)))
+    findMatchingViaEdges : ∀ {n} {source : V} → List (∃ (λ inter → source ⇒ inter)) → MonadDfs n (Maybe (∃ λ dest → Path _⇒_ source dest × T (matches dest)))
+    findMatchingViaEdge : ∀ {n} {source inter : V} → source ⇒ inter → MonadDfs n (Maybe (∃ λ dest → Path _⇒_ source dest × T (matches dest)))
 
     -- The base case of induction on the size of the seen set. This is only here
     -- to satisfy the termination checker.
-    findDestFrom {Nat.zero} source = returnₛ nothing
-    findDestFrom {Nat.suc _} source = withMarked source (
+    findMatchingFrom {Nat.zero} source = returnₛ nothing
+    findMatchingFrom {Nat.suc _} source = withMarked source (
       case Tree.lookup source graph of λ
       -- We have a list of edges from this source to some other vertex. For
       -- each of these, a recursive call will only return paths from that
       -- vertex if it is yet unseen. Note the recursive call is on a seen set
       -- with an index one lower, satisfying Agda's termination checker.
-      { (just es) → findViaEdges es
+      { (just es) → findMatchingViaEdges es
       -- there are no edges from this source so nothing is reachable from it
       ; nothing → returnₛ nothing
       }) >>=ₛ maybe returnₛ (returnₛ nothing)
 
-    findViaEdges [] = returnₛ nothing
-    findViaEdges ((d , e) ∷ es) =
-      findViaEdge e >>=ₛ λ
-      { (just p) → returnₛ (just p)
-      ; nothing → findViaEdges es
+    findMatchingViaEdges [] = returnₛ nothing
+    findMatchingViaEdges ((d , e) ∷ es) =
+      findMatchingViaEdge e >>=ₛ λ
+      { (just r) → returnₛ (just r)
+      ; nothing → findMatchingViaEdges es
       }
 
-    findViaEdge {inter = d} e with isDest d
-    findViaEdge {inter = _} e | yes ≡.refl = returnₛ (just (edge e))
-    findViaEdge {inter = d} e | no _ =
-      findDestFrom d >>=ₛ λ
-      { (just p) → returnₛ (just (connect (edge e) p))
+    findMatchingViaEdge {inter = d} e with matches d | ≡.inspect matches d
+    findMatchingViaEdge {inter = _} e | true | ≡.[ eq ] = returnₛ (just (_ , edge e , Equivalence.from Bool.T-≡ ⟨$⟩ eq))
+    findMatchingViaEdge {inter = d} e | false | _ =
+      findMatchingFrom d >>=ₛ λ
+      { (just (_ , p , q)) → returnₛ (just (_ , connect (edge e) p , q))
       ; nothing → returnₛ nothing
       }
 
   -- Given a source vertex S, finds all vertices T such that there is a path
   -- from S to T, and returns the path. No target vertex is returned more than
   -- once.
-  findDest : (source : V) → Maybe (Path _⇒_ source dest)
-  findDest source =
+  findMatching : (source : V) → Maybe (∃ λ dest → Path _⇒_ source dest × T (matches dest))
+  findMatching source =
     let _ , seen = Seen.forGraph graph
-    in runMonadDfs (findDestFrom source) seen
+    in runMonadDfs (findMatchingFrom source) seen
+
+module _ (graph : Graph) {dest} (isDest : ∀ v → Dec (v ≡ dest)) where
+  -- Given a source vertex S, finds all vertices T such that there is a path
+  -- from S to T, and returns the path. No target vertex is returned more than
+  -- once.
+  findDest : (source : V) → Maybe (Path _⇒_ source dest)
+  findDest source with findMatching graph (⌊_⌋ ∘ isDest) source
+  ... | just (dest′ , p , q) with isDest dest′
+  ... | yes ≡.refl = just p
+  findDest source | just (_ , _ , ()) | no _
+  findDest source | nothing = nothing

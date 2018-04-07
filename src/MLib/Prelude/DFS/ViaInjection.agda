@@ -16,6 +16,7 @@ module MLib.Prelude.DFS.ViaInjection
 open import MLib.Prelude.Path
 import MLib.Prelude.DFS as DFS
 import Data.AVL isStrictTotalOrder as Tree
+open Bool using (T)
 
 module V = Setoid V-setoid
 open V using (_≈_) renaming (Carrier to V)
@@ -56,3 +57,8 @@ findDest : Graph → ∀ {dest} (isDest : ∀ i → Dec (i ≡ toIx dest)) (sour
 findDest graph {dest} isDest source =
   let resI = BaseDFS.findDest graph isDest (toIx source)
   in Maybe.map (PathE-subst (left-inverse-of injection _) (left-inverse-of injection _) ∘ convertPath) resI
+
+findMatching : Graph → (matches : V → Bool) (source : V) → Maybe (∃ λ dest → Path E source dest × T (matches dest))
+findMatching graph matches source =
+  let resI = BaseDFS.findMatching graph (matches ∘ fromIx) (toIx source)
+  in Maybe.map (λ {(_ , p , q) → _ , PathE-subst (left-inverse-of injection _) V.refl (convertPath p) , q}) resI

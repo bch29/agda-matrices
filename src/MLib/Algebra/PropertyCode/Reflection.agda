@@ -12,16 +12,20 @@ open import Holes.Prelude
   ; _>>=²_
   ; TC-Monad
   ; Maybe-Monad
+  ; mapArg
+  ; mapAbs
   )
 
 open import MLib.Algebra.PropertyCode.RawStruct
 open import MLib.Algebra.PropertyCode.Core
+open import MLib.Prelude.Path
 import MLib.Prelude.DFS.ViaInjection as DFS
 
 open import Function.Equivalence using (Equivalence)
 open import Function.Equality using (_⟨$⟩_)
 import Data.Bool.Properties as Bool
 open Function using (case_of_)
+open import Relation.Binary using (_Respects₂_)
 
 open import Reflection
 
@@ -54,7 +58,21 @@ module UseProperty {k} {code : Code k} {c ℓ} (rawStruct : RawStruct (Code.K co
   open RawStruct rawStruct
   open Code code
 
-  -- open Prover.Search {A = Properties code} _⇒ₚ_ ⇒ₚ-trans
+  module Props = Setoid (Properties-setoid {code = code})
+  open Props using () renaming (_≈_ to _≈ₚ_)
+
+  private
+    ⇒ₚ-reflexive : ∀ {Π Π′ : Properties code} → Π ≈ₚ Π′ → Π ⇒ₚ Π′
+    ⇒ₚ-reflexive {Π} {Π′} p = →ₚ-⇒ₚ go
+      where
+      go : ∀ π → π ∈ₚ Π → π ∈ₚ Π′
+      go π (fromTruth truth) = fromTruth (≡.subst Bool.T (p Property.refl) truth)
+
+  ⇒ₚ-subst : _⇒ₚ_ Respects₂ _≈ₚ_
+  proj₁ ⇒ₚ-subst {Γ} {Π} {Π′} e p = ⇒ₚ-trans p (⇒ₚ-reflexive e)
+  proj₂ ⇒ₚ-subst {Γ} {Π} {Π′} e p = ⇒ₚ-trans (⇒ₚ-reflexive (Props.sym e)) p
+
+  open DFS (Properties-setoid {code = code}) (Function.flip _⇒ₚ_) (proj₂ ⇒ₚ-subst , proj₁ ⇒ₚ-subst) Nat.<-isStrictTotalOrder Properties↞ℕ
 
   -- Prop = Property K × Term
   -- Props = Properties code × Term
@@ -65,52 +83,78 @@ module UseProperty {k} {code : Code k} {c ℓ} (rawStruct : RawStruct (Code.K co
   -- _⇒ₜ_ : Props → Props → Set
   -- (Π₁ , Π₁t) ⇒ₜ (Π₂ , Π₂t) = Π₁ ⇒ₚ Π₂
 
-  Impl = (∃₂ λ (Π₁ Π₂ : Properties code) → Π₁ ⇒ₚ Π₂)
+  Impl = (∃₂ λ (Π₁ Π₂ : Properties code) → Π₂ ⇒ₚ Π₁)
 
   ImplSet = List (Impl × Term)
 
-  argToImpl : ℕ → Arg Type → TC (Maybe (Impl × Term))
-  argToImpl ix (arg _ (con (quote _⇒ₚ_) (_ ∷ _ ∷ arg (arg-info visible relevant) prop1 ∷ arg (arg-info visible relevant) prop2 ∷ []))) =
+  -- inWeakenedContext : ∀ {a} {A : Set a} → ℕ → TC A → TC A
+  -- inWeakenedContext n action =
+  --   getContext >>=′ λ ctx →
+  --   inContext (List.drop n ctx) action
+
+  -- TODO: make this respect lambdas
+  {-# TERMINATING #-}
+  mapVars : (ℕ → ℕ) → Term → Term
+  mapVars f (var x args) = var (f x) (List.map (mapArg (mapVars f)) args)
+  mapVars f (con c args) = con c (List.map (mapArg (mapVars f)) args)
+  mapVars f (def n args) = def n (List.map (mapArg (mapVars f)) args)
+  mapVars f (lam v t) = lam v (mapAbs (mapVars f) t)
+  mapVars f (pat-lam cs args) = pat-lam cs (List.map (mapArg (mapVars f)) args)
+  mapVars f (pi a b) = pi (mapArg (mapVars f) a) (mapAbs (mapVars f) b)
+  mapVars f (sort (set t)) = sort (set (mapVars f t))
+  mapVars f (sort (lit n)) = sort (lit n)
+  mapVars f (sort unknown) = sort unknown
+  mapVars f (lit l) = lit l
+  mapVars f (meta x args) = meta x (List.map (mapArg (mapVars f)) args)
+  mapVars f unknown = unknown
+
+  argToImpl : ℕ → Type → TC (Maybe (Impl × Term))
+  argToImpl ix (def (quote _⇒ₚ_) (_ ∷ _ ∷ arg (arg-info visible relevant) prop1 ∷ arg (arg-info visible relevant) prop2 ∷ [])) =
     catchTC
-    (unquoteTC prop1 >>=′ λ (Π₁ : Properties code) →
-     unquoteTC prop2 >>=′ λ (Π₂ : Properties code) →
-     unquoteTC (var ix []) >>=′ λ (impl : Π₁ ⇒ₚ Π₂) →
+    (unquoteTC prop1 >>=′ λ (Π₂ : Properties code) →
+     unquoteTC prop2 >>=′ λ (Π₁ : Properties code) →
+     unquoteTC (var ix []) >>=′ λ (impl : Π₂ ⇒ₚ Π₁) →
      return (just ((Π₁ , Π₂ , impl) , var ix [])))
      -- If 'unquoteTC' fails at any point here it is because the implication is
      -- regarding properties on the wrong code, so return 'nothing'.
     (return nothing)
-  argToImpl ix (arg _ _) = return nothing
+  argToImpl ix _ = return nothing
 
-  argToProperties : ℕ → Arg Type → TC (Maybe (Properties code × Term))
-  argToProperties ix (arg _ propsTy) =
-    catchTC
-    (fmap (λ Π → just (Π , var ix [])) (unquoteTC propsTy))
-    (return nothing)
+  argToImpl′ : ℕ → Arg Type → TC (Maybe (Impl × Term))
+  argToImpl′ ix (arg _ t) =
+    getContext >>=′ λ ctx →
+    normalise (mapVars (λ v → (v Nat.+ ix Nat.+ 1)) t) >>=′ argToImpl ix
 
   implsInScope : TC ImplSet
-  implsInScope = getContext >>=′ itraverseMaybe argToImpl
+  implsInScope = getContext >>=′ itraverseMaybe argToImpl′
+    -- typeError ∘ List.map (termErr ∘ Holes.Prelude.getArg)
 
-  -- Given a set of property implications, find a particular property on the RHS of an impl.
-  findProperty : ∀ π → ImplSet → List (∃₂ λ (Π₁ Π₂ : Properties code) → Π₁ ⇒ₚ Π₂ × π ∈ₚ Π₂)
-  findProperty π = List.mapMaybe go
-    where
-    go : Impl × Term → Maybe (∃₂ λ Π₁ Π₂ → Π₁ ⇒ₚ Π₂ × π ∈ₚ Π₂)
-    go ((Π₁ , Π₂ , p) , t) with hasProperty Π₂ π | ≡.inspect (hasProperty Π₂) π
-    ... | false | _ = nothing
-    ... | true | ≡.[ q ] = just (Π₁ , Π₂ , p , fromTruth (Equivalence.from Bool.T-≡ ⟨$⟩ q))
-
-  -- implSetGraph : ImplSet → Search.Graph
-  -- implSetGraph = ?
-  --   where
-  --   implSetDatabase : ImplSet → Database
-  --   implSetDatabase = ?
+  implSetGraph : ImplSet → Graph
+  implSetGraph = mkGraph ∘ List.map proj₁
 
   macro
     use : Property K → Term → TC ⊤
     use π goal =
       quoteTC π >>=′ λ π-term →
       implsInScope >>=′ λ Πs →
-      case findProperty π Πs of λ
-        { [] → typeError (strErr "can't find property" ∷ termErr π-term ∷ [])
-        ; Πs@(_ ∷ _) → {!!}
-        }
+      -- quoteTC (List.length Πs) >>=′ λ len →
+      -- typeError (strErr "got impls, length" ∷ termErr len ∷ [])
+      let gr = implSetGraph Πs
+          res = findMatching gr (λ Π′ → hasProperty Π′ π) Π
+      in quoteTC res >>=′ λ t → typeError (strErr "test" ∷ termErr t ∷ [])
+      -- in case findMatching gr (λ Π′ → hasProperty Π′ π) Π of λ
+      --    { (just (Π′ , path , hasπ)) →
+      --      let impl : Π′ ⇒ₚ Π
+      --          impl = transPath (Function.flip ⇒ₚ-trans) path
+      --          mem : π ∈ₚ Π′
+      --          mem = fromTruth hasπ
+      --          res = ⇒ₚ-MP mem impl
+      --      in
+      --      typeError (strErr "found solution" ∷ [])
+      --         -- quoteTC res >>=′ λ t →
+      --         -- typeError (strErr "found solution" ∷ termErr t ∷ [])
+      --        -- unify goal
+      --    ; nothing → typeError (strErr "no solution" ∷ [])
+      --      -- quoteTC Πs >>=′ λ Πs-term →
+      --      -- typeError (strErr "can't find property" ∷ termErr π-term ∷ strErr "in graph" ∷ termErr Πs-term ∷ [])
+      --    }

@@ -23,7 +23,6 @@ open import Data.Vec.Relation.Pointwise.Inductive using (Pointwise; []; _∷_)
 open import Data.Product.Relation.SigmaPropositional as OverΣ using (OverΣ)
 
 open import Data.Bool using (T)
-open import Data.Bool.Properties using (∧-isCommutativeMonoid; ∧-idem; T-≡)
 
 open import Category.Applicative
 
@@ -42,14 +41,6 @@ open Algebra using (IdempotentCommutativeMonoid)
 open Bool
 
 module BoolExtra where
-  ∧-idempotentCommutativeMonoid : IdempotentCommutativeMonoid _ _
-  ∧-idempotentCommutativeMonoid = record
-    { isIdempotentCommutativeMonoid = record
-      { isCommutativeMonoid = ∧-isCommutativeMonoid
-      ; idem = ∧-idem
-      }
-    }
-
   _⇒_ : Bool → Bool → Bool
   false ⇒ false = true
   false ⇒ true = true
@@ -319,10 +310,10 @@ module _ {k} {code : Code k} where
   -- Evaluates to 'true' only when every property is present.
 
   hasAll : Properties code → Bool
-  hasAll Π = Property.foldMap BoolExtra.∧-idempotentCommutativeMonoid (hasProperty Π)
+  hasAll Π = Property.foldMap Bool.∧-idempotentCommutativeMonoid (hasProperty Π)
 
   implies : Properties code → Properties code → Bool
-  implies Π₁ Π₂ = Property.foldMap BoolExtra.∧-idempotentCommutativeMonoid (λ π → hasProperty Π₁ π BoolExtra.⇒ hasProperty Π₂ π)
+  implies Π₁ Π₂ = Property.foldMap Bool.∧-idempotentCommutativeMonoid (λ π → hasProperty Π₁ π BoolExtra.⇒ hasProperty Π₂ π)
 
   -- The full set of properties
 
@@ -373,7 +364,7 @@ module _ {k} {code : Code k} where
     where
     open ≡.Reasoning
 
-    icm = BoolExtra.∧-idempotentCommutativeMonoid
+    icm = Bool.∧-idempotentCommutativeMonoid
 
     impl-pointwise : ∀ π → hasProperty Π₁ π BoolExtra.⇒ hasProperty Π₂ π ≡ true
     impl-pointwise π = Equivalence.to T-≡ ⟨$⟩ BoolExtra.abs (truth ∘ p π ∘ fromTruth)
@@ -392,7 +383,7 @@ module _ {k} {code : Code k} where
       i = Property.toIx π
 
       open ≡.Reasoning
-      icm = BoolExtra.∧-idempotentCommutativeMonoid
+      icm = Bool.∧-idempotentCommutativeMonoid
       module ∧ = IdempotentCommutativeMonoid icm
 
       implies-true : implies Π₁ Π₂ ≡ true

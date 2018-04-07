@@ -25,6 +25,7 @@ open import Data.Empty public
 
 module Bool where
   open import Data.Bool public
+  open import Data.Bool.Properties public
 open Bool using (Bool; true; false; if_then_else_) hiding (module Bool) public
 
 module Nat where
