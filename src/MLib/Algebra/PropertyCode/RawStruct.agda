@@ -33,9 +33,9 @@ module _ {c ℓ} {A : Set c} (_≈_ : Rel A ℓ) where
   open Algebra.FunctionProperties _≈_
 
   Congruentₙ : ∀ {n} → (Vec A n → A) → Set (c ⊔ˡ ℓ)
-  Congruentₙ {n} f = ∀ {xs ys} → Pointwise _≈_ xs ys → f xs ≈ f ys
+  Congruentₙ f = ∀ {xs ys} → Pointwise _≈_ xs ys → f xs ≈ f ys
 
-  fromRefl : (∀ {x} → x ≈ x) → (f : Vec A 0 → A) → Congruentₙ f
+  fromRefl : Reflexive _≈_ → (f : Vec A 0 → A) → Congruentₙ f
   fromRefl refl f [] = refl
 
   fromCongruent₂ : (f : Vec A 2 → A) → Congruent₂ (curryⁿ f) → Congruentₙ f

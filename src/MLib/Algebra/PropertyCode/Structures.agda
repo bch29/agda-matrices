@@ -13,6 +13,7 @@ open import Relation.Binary as B using (Setoid)
 open List using (_∷_; [])
 open import Data.List.Any using (Any; here; there)
 open import Data.Bool using (_∨_)
+open Nat using (suc; zero)
 open import Data.Vec.Relation.Pointwise.Inductive using (_∷_; [])
 
 open import Function.LeftInverse using (LeftInverse; _↞_)
@@ -24,13 +25,6 @@ open import Category.Applicative
 --  Some named property combinations
 --------------------------------------------------------------------------------
 
-private
-  traverseAll : ∀ {a p p′} {A : Set a} {P : A → Set p} {P′ : A → Set p′} → (∀ {x} → P x → Maybe (P′ x)) → {xs : List A} → All P xs → Maybe (All P′ xs)
-  traverseAll f [] = just []
-  traverseAll f (px ∷ ap) with f px | traverseAll f ap
-  traverseAll f (px ∷ ap) | just px′ | just ap′ = just (px′ ∷ ap′)
-  traverseAll f (px ∷ ap) | _ | _ = nothing
-
 subΠ : ∀ {k k′} {code : Code k} {code′ : Code k′} →
   let open Code code using (K)
       open Code code′ using () renaming (K to K′)
@@ -39,7 +33,7 @@ subΠ : ∀ {k k′} {code : Code k} {code′ : Code k′} →
 hasProperty (subΠ f Π₀ Π₁) (π , κs) = hasProperty Π₁ (π , κs) ∨ satUnder
   where
     satUnder : Bool
-    satUnder with traverseAll f κs
+    satUnder with List.All.traverse f κs
     satUnder | just κs′ = hasProperty Π₀ (π , κs′)
     satUnder | nothing = false
 
@@ -162,59 +156,113 @@ module _ {k k′} {code : Code k} {code′ : Code k′} where
 module _ where
   open LeftInverse
 
-  magma↞monoid : ∀ {n} → Maybe (MagmaK n) ↞ Maybe (MonoidK n)
-  magma↞monoid .to ._⟨$⟩_ (just ∙) = just ∙
-  magma↞monoid .to ._⟨$⟩_ nothing = nothing
-  magma↞monoid .to .feCong ≡.refl = ≡.refl
-  magma↞monoid .from ._⟨$⟩_ (just ε) = nothing
-  magma↞monoid .from ._⟨$⟩_ (just ∙) = just ∙
-  magma↞monoid .from ._⟨$⟩_ nothing = nothing
-  magma↞monoid .from .feCong ≡.refl = ≡.refl
-  magma↞monoid .left-inverse-of (just ∙) = ≡.refl
-  magma↞monoid .left-inverse-of nothing = ≡.refl
+  private
+    magma↞monoid2 : MagmaK 2 ↞ MonoidK 2
+    magma↞monoid2 .to ._⟨$⟩_ ∙ = ∙
+    magma↞monoid2 .to .feCong ≡.refl = ≡.refl
+    magma↞monoid2 .from ._⟨$⟩_ ∙ = ∙
+    magma↞monoid2 .from .feCong ≡.refl = ≡.refl
+    magma↞monoid2 .left-inverse-of ∙ = ≡.refl
 
--- module Into {c ℓ} where
---   open Algebra using (Semigroup; Monoid; CommutativeMonoid)
+  magmaSubcodeMonoid : IsSubcode magmaCode monoidCode
+  magmaSubcodeMonoid 0 = inj₁ λ ()
+  magmaSubcodeMonoid 1 = inj₁ λ ()
+  magmaSubcodeMonoid 2 = inj₂ magma↞monoid2
+  magmaSubcodeMonoid (suc (suc (suc _))) = inj₁ λ ()
 
---   module _ (struct : Struct magmaCode c ℓ) where
---     open Struct struct
+  private
+    monoid↞bimonoid0 : MonoidK 0 ↞ BimonoidK 0
+    monoid↞bimonoid0 .to ._⟨$⟩_ ε = 0#
+    monoid↞bimonoid0 .to .feCong ≡.refl = ≡.refl
+    monoid↞bimonoid0 .from ._⟨$⟩_ 0# = ε
+    monoid↞bimonoid0 .from ._⟨$⟩_ 1# = ε
+    monoid↞bimonoid0 .from .feCong ≡.refl = ≡.refl
+    monoid↞bimonoid0 .left-inverse-of ε = ≡.refl
 
---     semigroup : ∀ {Π : Properties magmaCode} ⦃ hasSemigroup : HasEach isSemigroup ⦄ → Semigroup _ _
---     semigroup = record
---       { _∙_ = ⟦ ∙ ⟧
---       ; isSemigroup = record
---         { isEquivalence = isEquivalence
---         ; assoc = from isSemigroup (associative on ∙)
---         ; ∙-cong = λ p q → congⁿ ∙ (p ∷ q ∷ [])
---         }
---       }
+    monoid↞bimonoid2 : MonoidK 2 ↞ BimonoidK 2
+    monoid↞bimonoid2 .to ._⟨$⟩_ ∙ = +
+    monoid↞bimonoid2 .to .feCong ≡.refl = ≡.refl
+    monoid↞bimonoid2 .from ._⟨$⟩_ + = ∙
+    monoid↞bimonoid2 .from ._⟨$⟩_ * = ∙
+    monoid↞bimonoid2 .from .feCong ≡.refl = ≡.refl
+    monoid↞bimonoid2 .left-inverse-of ∙ = ≡.refl
 
-  -- module _ (struct : Struct monoidCode c ℓ) where
-  --   open Struct struct
+  monoidSubcodeBimonoid : IsSubcode monoidCode bimonoidCode
+  monoidSubcodeBimonoid 0 = inj₂ monoid↞bimonoid0
+  monoidSubcodeBimonoid 1 = inj₁ λ ()
+  monoidSubcodeBimonoid 2 = inj₂ monoid↞bimonoid2
+  monoidSubcodeBimonoid (suc (suc (suc _))) = inj₁ λ ()
 
-  --   monoid : ∀ {c ℓ} ⦃ _ : HasEach isMonoid ⦄ → Monoid c ℓ
-  --   monoid ⦃ mon ⦄ = record
-  --     { isMonoid = record
-  --       { isSemigroup = {!!}
-  --       ; identity = {!!}
-  --       }
-  --     }
-  --     where
-  --       magmaPart : Struct (subCode magma↞monoid) c ℓ
-  --       magmaPart = subStruct magma↞monoid
+module Into {c ℓ} where
+  open Algebra using (Semigroup; Monoid; CommutativeMonoid; Semiring)
 
-  --       module S = Semigroup (semigroup {!!})
+  module _ (struct : Struct magmaCode c ℓ) where
+    open Struct struct
 
---   commutativeMonoid : ∀ {c ℓ} {props} ⦃ _ : isCommutativeMonoid ⊆ props ⦄ → Dagma props c ℓ → CommutativeMonoid c ℓ
---   commutativeMonoid dagma = record
---     { isCommutativeMonoid = record
---       { isSemigroup = S.isSemigroup
---       ; leftIdentity = proj₁ (proj₂ (from isCommutativeMonoid hasIdentity))
---       ; comm = from isCommutativeMonoid commutative
---       }
---     }
---     where
---       open Dagma dagma
---       module S = Semigroup (semigroup (dagma ↓M isCommutativeMonoid ↓M isSemigroup))
+    semigroup : ∀ ⦃ hasSemigroup : HasEach isSemigroup ⦄ → Semigroup _ _
+    semigroup ⦃ hasSemigroup ⦄ = record
+      { _∙_ = ⟦ ∙ ⟧
+      ; isSemigroup = record
+        { isEquivalence = isEquivalence
+        ; assoc = from hasSemigroup (associative on ∙)
+        ; ∙-cong = cong ∙
+        }
+      }
 
---   -- semiring
+  module _ (struct : Struct monoidCode c ℓ) where
+    open Struct struct
+
+    monoid : ⦃ hasMonoid : HasEach isMonoid ⦄ → Monoid c ℓ
+    monoid ⦃ hasMonoid ⦄ = record
+      { ε = ⟦ ε ⟧
+      ; isMonoid = record
+        { isSemigroup = S.isSemigroup
+        ; identity = from hasMonoid (ε is leftIdentity for ∙) , from hasMonoid (ε is rightIdentity for ∙)
+        }
+      }
+      where
+        magmaPart : Struct magmaCode c ℓ
+        magmaPart = subStruct magmaSubcodeMonoid
+
+        module S = Semigroup (semigroup magmaPart ⦃ inSubStruct magmaSubcodeMonoid {Π′ = supcodeProperties magmaSubcodeMonoid ?} {!get hasMonoid ⦃ ? ⦄!} ⦄)
+
+  module _ (struct : Struct bimonoidCode c ℓ) where
+    open Struct struct
+
+    monoidStruct : Struct monoidCode c ℓ
+    monoidStruct = subStruct monoidSubcodeBimonoid
+
+    semiring : ⦃ hasSemiring : HasEach isSemiring ⦄ → Semiring c ℓ
+    semiring ⦃ hasSemiring ⦄ = record
+      { _≈_ = _≈_
+      ; _+_ = ⟦ + ⟧
+      ; _*_ = ⟦ * ⟧
+      ; 0# = ⟦ 0# ⟧
+      ; 1# = ⟦ 1# ⟧
+      ; isSemiring = record
+        { isSemiringWithoutAnnihilatingZero = record
+          { +-isCommutativeMonoid = record
+            { isSemigroup = record
+              { isEquivalence = isEquivalence
+              ; assoc = from hasSemiring (associative on +)
+              ; ∙-cong = cong +
+              }
+            ; identityˡ = from hasSemiring (0# is leftIdentity for +)
+            ; comm = from hasSemiring (commutative on +)
+            }
+          ; *-isMonoid = record
+            { isSemigroup = record
+              { isEquivalence = isEquivalence
+              ; assoc = from hasSemiring (associative on *)
+              ; ∙-cong = cong *
+              }
+            ; identity = from hasSemiring (1# is leftIdentity for *) ,
+                         from hasSemiring (1# is rightIdentity for *)
+            }
+          ; distrib = from hasSemiring (* ⟨ distributesOverˡ ⟩ₚ +),
+                      from hasSemiring (* ⟨ distributesOverʳ ⟩ₚ +)
+          }
+        ; zero = from hasSemiring (0# is leftZero for *) ,
+                 from hasSemiring (0# is rightZero for *)
+        }
+      }

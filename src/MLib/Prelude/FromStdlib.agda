@@ -40,6 +40,17 @@ open Maybe using (Maybe; just; nothing; maybe) hiding (module Maybe) public
 module List where
   open import Data.List public
   open import Data.List.Properties public
+
+  module All where
+    open import Data.List.All public
+    open import Data.List.All.Properties public
+
+    traverse : ∀ {a p p′} {A : Set a} {P : A → Set p} {P′ : A → Set p′} → (∀ {x} → P x → Maybe (P′ x)) → {xs : List A} → All P xs → Maybe (All P′ xs)
+    traverse f [] = just []
+    traverse f (px ∷ ap) with f px | traverse f ap
+    traverse f (px ∷ ap) | just px′ | just ap′ = just (px′ ∷ ap′)
+    traverse f (px ∷ ap) | _ | _ = nothing
+
 open List using (List; _∷_; []) hiding (module List) public
 
 module Table where

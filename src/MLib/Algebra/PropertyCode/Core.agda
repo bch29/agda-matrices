@@ -240,17 +240,12 @@ record Code k : Set (sucˡ k) where
   allAppliedProperties : List (Property K)
   allAppliedProperties = FiniteSet.enumerate Property.finiteSet
 
-  SubcodeInjection : ∀ {k′} → (ℕ → Set k′) → Set _
-  SubcodeInjection K′ = ∀ n → ¬ K′ n ⊎ LeftInverse (≡.setoid (K′ n)) (K.setoid n)
 
-  subcode :
-    ∀ {k′} {K′ : ℕ → Set k′}
-    → SubcodeInjection K′
-    → Code k′
-  subcode {K′ = K′} inj =
-    record
-    { isFiniteAt = λ n → extendedIsFinite′ (finiteSetAt n) (inj n)
-    }
+IsSubcode : ∀ {k k′} → Code k → Code k′ → Set (k ⊔ˡ k′)
+IsSubcode sub sup = ∀ n → ¬ Sub.K n ⊎ LeftInverse (Sub.K.setoid n) (Sup.K.setoid n)
+  where
+    module Sub = Code sub
+    module Sup = Code sup
 
 
 mapProperty :
@@ -435,44 +430,62 @@ module _ {k} {code : Code k} where
   ⇒ₚ-MP : ∀ {Π Π′ π} → π ∈ₚ Π′ → Π′ ⇒ₚ Π → π ∈ₚ Π
   ⇒ₚ-MP {Π = Π} {Π′} {π} hasπ has⇒ = ⇒ₚ-→ₚ has⇒ π hasπ
 
--- module _ {k} {code : Code k} where
---   open Code code using (K; module Property)
+  -- IsSubcode sub sup = ∀ n → ¬ Sub.K n ⊎ LeftInverse (Sub.K.setoid n) (Sup.K.setoid n)
 
---   -- subcodeInjectionMapper : ∀ {k′} {K′ : ℕ → Set k′} → Code.SubcodeInjection code K′ → ∀ {n} → K n → K′ n
---   -- subcodeInjectionMapper inj {n} with inj n
---   -- subcodeInjectionMapper inj {n} | inj₁ ¬k′ = {!!}
---   -- subcodeInjectionMapper inj {n} | inj₂ y = {!!}
+module _ {k k′} {sub : Code k} {sup : Code k′} (isSub : IsSubcode sub sup) where
+  module Sub = Code sub
+  module Sup = Code sup
 
---   -- subcodeMapProperty : ∀ {k′} {K′ : ℕ → Set k′} → Code.SubcodeInjection code K′ → Property K → Property K′
---   -- subcodeMapProperty inj π = {!!}
 
---   -- subcodeProperties :
---   --   Properties code
---   --   → ∀ {k′} {K′ : ℕ → Set k′} (inj : Code.SubcodeInjection code K′)
---   --   → Properties (Code.subcode code inj)
---   -- hasProperty (subcodeProperties Π inj) π = {!!}
---     -- hasProperty Π (mapProperty (LeftInverse.to inj ⟨$⟩_) π)
+  subK→supK : ∀ {n} → Sub.K n → Sup.K n
+  subK→supK {n} with isSub n
+  subK→supK {n} | inj₁ ¬k = ⊥-elim ∘ ¬k
+  subK→supK {n} | inj₂ linv = LeftInverse.to linv ⟨$⟩_
 
---   -- fromSubcode :
---   --   ∀ {k′} {K′ : ℕ → Set k′} {Π : Properties code} {π : Property K′}
---   --   (inj : ∀ {n} → LeftInverse (≡.setoid (K′ n)) (K.setoid n))
---   --   → π ∈ₚ subcodeProperties Π inj → mapProperty (LeftInverse.to inj ⟨$⟩_) π ∈ₚ Π
---   -- fromSubcode inj (fromTruth truth) = fromTruth truth
+  supK→subK : ∀ {n} → Sup.K n → Maybe (Sub.K n)
+  supK→subK {n} with isSub n
+  supK→subK {n} | inj₁ _ = λ _ → nothing
+  supK→subK {n} | inj₂ linv = just ∘ (LeftInverse.from linv ⟨$⟩_)
 
---   -- module _ {c ℓ} (rawStruct : RawStruct K c ℓ) where
---   --   open RawStruct rawStruct
+  subcodeProperties : Properties sup → Properties sub
+  hasProperty (subcodeProperties Π) = hasProperty Π ∘ mapProperty subK→supK
 
---   --   reinterpret :
---   --     ∀ {k′} {K′ : ℕ → Set k′} (f : ∀ {n} → K′ n → K n) (π : Property K′)
---   --     → ⟦ mapProperty f π ⟧P rawStruct → ⟦ π ⟧P (subRawStruct f)
---   --   reinterpret f (associative      , ∙ ∷ [])     = id
---   --   reinterpret f (commutative      , ∙ ∷ [])     = id
---   --   reinterpret f (idempotent       , ∙ ∷ [])     = id
---   --   reinterpret f (selective        , ∙ ∷ [])     = id
---   --   reinterpret f (cancellative     , ∙ ∷ [])     = id
---   --   reinterpret f (leftIdentity     , α ∷ ∙ ∷ []) = id
---   --   reinterpret f (rightIdentity    , α ∷ ∙ ∷ []) = id
---   --   reinterpret f (leftZero         , α ∷ ∙ ∷ []) = id
---   --   reinterpret f (rightZero        , α ∷ ∙ ∷ []) = id
---   --   reinterpret f (distributesOverˡ , * ∷ + ∷ []) = id
---   --   reinterpret f (distributesOverʳ , * ∷ + ∷ []) = id
+  supcodeProperties : Properties sub → Properties sup
+  hasProperty (supcodeProperties Π) (π , κs) with List.All.traverse supK→subK κs
+  hasProperty (supcodeProperties Π) (π , κs) | just κs′ = hasProperty Π (π , κs′)
+  hasProperty (supcodeProperties Π) (π , κs) | nothing = false
+
+  fromSubcode :
+    ∀ {π} {Π : Properties sup}
+    → π ∈ₚ subcodeProperties Π
+    → mapProperty subK→supK π ∈ₚ Π
+  fromSubcode (fromTruth truth) = fromTruth truth
+
+  fromSupcode :
+    ∀ {π} {Π : Properties sup}
+    → mapProperty subK→supK π ∈ₚ Π
+    → π ∈ₚ subcodeProperties Π
+  fromSupcode (fromTruth truth) = fromTruth truth
+
+  module _
+    {c ℓ}
+    (sup-rawStruct : RawStruct Sup.K c ℓ)
+    (sub-isRawStruct : IsRawStruct (RawStruct._≈_ sup-rawStruct) (RawStruct.appOp sup-rawStruct ∘ subK→supK)) where
+
+    sub-rawStruct : RawStruct Sub.K c ℓ
+    sub-rawStruct = record { isRawStruct = sub-isRawStruct }
+
+    reinterpret :
+      ∀ (π : Property Sub.K)
+      → ⟦ mapProperty subK→supK π ⟧P sup-rawStruct → ⟦ π ⟧P sub-rawStruct
+    reinterpret (associative      , ∙ ∷ [])     = id
+    reinterpret (commutative      , ∙ ∷ [])     = id
+    reinterpret (idempotent       , ∙ ∷ [])     = id
+    reinterpret (selective        , ∙ ∷ [])     = id
+    reinterpret (cancellative     , ∙ ∷ [])     = id
+    reinterpret (leftIdentity     , α ∷ ∙ ∷ []) = id
+    reinterpret (rightIdentity    , α ∷ ∙ ∷ []) = id
+    reinterpret (leftZero         , α ∷ ∙ ∷ []) = id
+    reinterpret (rightZero        , α ∷ ∙ ∷ []) = id
+    reinterpret (distributesOverˡ , * ∷ + ∷ []) = id
+    reinterpret (distributesOverʳ , * ∷ + ∷ []) = id

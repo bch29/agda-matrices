@@ -17,7 +17,7 @@ module _ {ℓ} where
 
 module _ {c ℓ} (struct : Struct bimonoidCode c ℓ) where
   module S = Struct struct renaming (Carrier to S; _≈_ to _≈′_)
-  open S using (S; _≈′_; _⟨_⟩_; ⟦_⟧; Has; HasList; HasEach; module Macros)
+  open S using (S; _≈′_; _⟨_⟩_; ⟦_⟧; Has; HasList; HasEach; use; from)
 
   module _ {m n} where
 
@@ -41,8 +41,11 @@ module _ {c ℓ} (struct : Struct bimonoidCode c ℓ) where
     setoid : Setoid _ _
     setoid = record { isEquivalence = isEquivalence }
 
-    open Algebra.FunctionProperties _≈_
+    module FunctionProperties = Algebra.FunctionProperties _≈_
 
+  open FunctionProperties
+
+  module _ {m n} where
     -- Pointwise addition --
 
     _⊕_ : Matrix S m n → Matrix S m n → Matrix S m n
@@ -51,31 +54,36 @@ module _ {c ℓ} (struct : Struct bimonoidCode c ℓ) where
     ⊕-cong : Congruent₂ _⊕_
     ⊕-cong p q = λ i j → S.congⁿ + (p i j ∷ q i j ∷ [])
 
-    -- assoc : ⦃ _ : Has (associative on +) ⦄ → Associative _⊕_
-    -- assoc A B C i j = use (associative on +) (A i j) (B i j) (C i j)
+    assoc : ⦃ props : Has (associative on +) ⦄ → Associative _⊕_
+    assoc ⦃ props ⦄ _ _ _ _ _ = from props (associative on +) _ _ _
 
     0● : Matrix S m n
     0● _ _ = ⟦ 0# ⟧
 
-    -- identityˡ : ⦃ _ : Has (0# is leftIdentity for +) ⦄ → LeftIdentity 0● _⊕_
-    -- identityˡ A i j = use (0# is leftIdentity for +) (A i j)
+    identityˡ : ⦃ props : Has (0# is leftIdentity for +) ⦄ → LeftIdentity 0● _⊕_
+    identityˡ ⦃ props ⦄ _ _ _ = from props (0# is leftIdentity for +) _
 
-    identityʳ : ⦃ hl : Has (0# is rightIdentity for +) ⦄ → RightIdentity 0● _⊕_
-    identityʳ A i j = S.Macros.use (0# is rightIdentity for +)
-      -- use (0# is rightIdentity for +) (A i j)
+    identityʳ : ⦃ props : Has (0# is rightIdentity for +) ⦄ → RightIdentity 0● _⊕_
+    identityʳ ⦃ props ⦄ _ _ _ = from props (0# is rightIdentity for +) _
 
+  module _ {m n o} where
+    _⊛_ : Matrix S m n → Matrix S n o → Matrix S m o
+    A ⊛ B = {!!}
 
-    -- *-assoc : ⦃ _ : HasList (* distributesOverˡ + ∷ * distributesOverʳ + ∷ []) ⦄ → Associative _⊛_
-    -- *-assoc = ?
+  *-assoc :
+    ⦃ props : HasList (* ⟨ distributesOverˡ ⟩ₚ + ∷ * ⟨ distributesOverʳ ⟩ₚ + ∷ []) ⦄
+    → ∀ {m n p q} (A : Matrix S m n) (B : Matrix S n p) (C : Matrix S p q)
+    → ((A ⊛ B) ⊛ C) ≈ (A ⊛ (B ⊛ C))
+  *-assoc ⦃ props ⦄ A B C i j = {!!}
     --   -- ...
     --   use (* distributesOverˡ +)
     --   -- ...
 
 
 
-    module _ ⦃ _ : HasEach (liftΠ +-part isCommutativeMonoid) ⦄ where
-      -- +-commutativeMonoid : CommutativeMonoid ℓ p
-      -- +-commutativeMonoid = Into.commutativeMonoid +-dagma
+  module _ ⦃ +-commMonoid : HasEach (liftΠ +-part isCommutativeMonoid) ⦄ where
+    +-commutativeMonoid : CommutativeMonoid c ℓ
+    +-commutativeMonoid = Into.commutativeMonoid +-dagma
 
 --       private
 --         module M where
