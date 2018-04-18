@@ -42,7 +42,7 @@ module List where
   open import Data.List.Properties public
 
   module All where
-    open import Data.List.All public
+    open import Data.List.All public hiding (module All)
     open import Data.List.All.Properties public
 
     traverse : ∀ {a p p′} {A : Set a} {P : A → Set p} {P′ : A → Set p′} → (∀ {x} → P x → Maybe (P′ x)) → {xs : List A} → All P xs → Maybe (All P′ xs)
@@ -50,6 +50,8 @@ module List where
     traverse f (px ∷ ap) with f px | traverse f ap
     traverse f (px ∷ ap) | just px′ | just ap′ = just (px′ ∷ ap′)
     traverse f (px ∷ ap) | _ | _ = nothing
+
+  open All using (All) public
 
 open List using (List; _∷_; []) hiding (module List) public
 
@@ -155,3 +157,29 @@ instance
   Maybe-Choice : ∀ {a} → Choice {a} Maybe
   Choice._<|>_ Maybe-Choice (just x) _ = just x
   Choice._<|>_ Maybe-Choice nothing y = y
+
+module List-All where
+  open List
+  open All using ([]; _∷_)
+
+  traverse-map :
+    ∀ {a p q r} {A : Set a} {P : A → Set p} {Q : A → Set q} {R : A → Set r}
+    (g : ∀ {x} → Q x → Maybe (R x)) (f : ∀ {x} → P x → Q x)
+    {xs : List A} (ap : All P xs) → All.traverse g (All.map f ap) ≡ All.traverse (g ∘ f) ap
+  traverse-map g f [] = ≡.refl
+  traverse-map g f (px ∷ ap) with g (f px)
+  traverse-map g f (px ∷ ap) | just _ rewrite traverse-map g f ap = ≡.refl
+  traverse-map g f (px ∷ ap) | nothing = ≡.refl
+
+  traverse-just : ∀ {a p} {A : Set a} {P : A → Set p} {xs : List A} (ap : All P xs) → All.traverse just ap ≡ just ap
+  traverse-just [] = ≡.refl
+  traverse-just (px ∷ ap) rewrite traverse-just ap = ≡.refl
+
+  traverse-cong :
+    ∀ {a p q} {A : Set a} {P : A → Set p} {Q : A → Set q}
+    (f g : ∀ {x} → P x → Maybe (Q x)) →
+    (∀ {x} (p : P x) → f p ≡ g p) →
+    ∀ {xs : List A} (ap : All P xs) →
+    All.traverse f ap ≡ All.traverse g ap
+  traverse-cong f g eq [] = ≡.refl
+  traverse-cong f g eq (px ∷ ap) rewrite eq px | traverse-cong f g eq ap = ≡.refl

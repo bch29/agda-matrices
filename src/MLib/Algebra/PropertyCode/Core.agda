@@ -447,6 +447,11 @@ module _ {k k′} {sub : Code k} {sup : Code k′} (isSub : IsSubcode sub sup) w
   supK→subK {n} | inj₁ _ = λ _ → nothing
   supK→subK {n} | inj₂ linv = just ∘ (LeftInverse.from linv ⟨$⟩_)
 
+  acrossSub : ∀ {n} {κ : Sub.K n} → supK→subK (subK→supK κ) ≡ just κ
+  acrossSub {n} with isSub n
+  acrossSub {n} {κ} | inj₁ ¬κ = ⊥-elim (¬κ κ)
+  acrossSub {n} | inj₂ linv = ≡.cong just (LeftInverse.left-inverse-of linv _)
+
   subcodeProperties : Properties sup → Properties sub
   hasProperty (subcodeProperties Π) = hasProperty Π ∘ mapProperty subK→supK
 
@@ -466,6 +471,20 @@ module _ {k k′} {sub : Code k} {sup : Code k′} (isSub : IsSubcode sub sup) w
     → mapProperty subK→supK π ∈ₚ Π
     → π ∈ₚ subcodeProperties Π
   fromSupcode (fromTruth truth) = fromTruth truth
+
+  fromSupcode′ : ∀ {π} {Π : Properties sub} →
+    π ∈ₚ Π → mapProperty subK→supK π ∈ₚ supcodeProperties Π
+  fromSupcode′ {π , κs} π∈Π ._∈ₚ_.truth with lem
+    where
+    open ≡.Reasoning
+    lem : List.All.traverse supK→subK (List.All.map subK→supK κs) ≡ just κs
+    lem = begin
+      List.All.traverse supK→subK (List.All.map subK→supK κs) ≡⟨ List-All.traverse-map supK→subK subK→supK κs ⟩
+      List.All.traverse (supK→subK ∘ subK→supK) κs ≡⟨ List-All.traverse-cong (supK→subK ∘ subK→supK) just (λ _ → acrossSub) κs ⟩
+      List.All.traverse just κs ≡⟨ List-All.traverse-just κs ⟩
+      just κs ∎
+  fromSupcode′ {π , κs} π∈Π ._∈ₚ_.truth | p rewrite p = π∈Π ._∈ₚ_.truth
+
 
   module _
     {c ℓ}

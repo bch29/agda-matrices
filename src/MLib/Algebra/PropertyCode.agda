@@ -80,4 +80,4 @@ record Struct {k} (code : Code k) c ℓ : Set (sucˡ (c ⊔ˡ ℓ ⊔ˡ k)) wher
     ∀ {k′} {code′ : Code k′} (isSub : IsSubcode code′ code) →
     ∀ {Π′ : Properties code′} (hasΠ′ : HasEach (supcodeProperties isSub Π′)) →
     Π′ ⇒ₚ subcodeProperties isSub Π
-  inSubStruct isSub hasΠ′ = →ₚ-⇒ₚ λ π hasπ → {!!} --  (⇒ₚ-→ₚ hasΠ′ _ {!π!})
+  inSubStruct isSub hasΠ′ = →ₚ-⇒ₚ λ π hasπ → fromSupcode isSub (⇒ₚ-→ₚ hasΠ′ (mapProperty (subK→supK isSub) π) (fromSupcode′ isSub hasπ))
