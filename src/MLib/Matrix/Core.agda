@@ -15,7 +15,7 @@ Matrix A m n = Fin m → Fin n → A
 
 module OverBimonoid {c ℓ} (struct : Struct bimonoidCode c ℓ) where
   module S = Struct struct renaming (Carrier to S; _≈_ to _≈′_)
-  open S using (S; _≈′_; _⟨_⟩_; ⟦_⟧; Has; HasList; HasEach; use; from; subStruct; inSubStruct; get; cong) public
+  open S hiding (isEquivalence; setoid; refl; sym; trans) public
 
   module _ {m n} where
 

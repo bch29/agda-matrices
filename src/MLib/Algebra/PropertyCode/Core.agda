@@ -161,7 +161,7 @@ PropKind-IsFiniteSet = record
     }
   }
   where
-    open Fin using (#_) renaming (zero to z; suc to s)
+    open Fin using (#_) renaming (zero to z; suc to s_)
 
     N = 11
 
@@ -179,18 +179,18 @@ PropKind-IsFiniteSet = record
     to distributesOverʳ = # 10
 
     from : Fin N → PropKind
-    from z                                         = associative
-    from (s z)                                     = commutative
-    from (s (s z))                                 = idempotent
-    from (s (s (s z)))                             = selective
-    from (s (s (s (s z))))                         = cancellative
-    from (s (s (s (s (s z)))))                     = leftIdentity
-    from (s (s (s (s (s (s z))))))                 = rightIdentity
-    from (s (s (s (s (s (s (s z)))))))             = leftZero
-    from (s (s (s (s (s (s (s (s z))))))))         = rightZero
-    from (s (s (s (s (s (s (s (s (s z)))))))))     = distributesOverˡ
-    from (s (s (s (s (s (s (s (s (s (s z)))))))))) = distributesOverʳ
-    from (s (s (s (s (s (s (s (s (s (s (s ())))))))))))
+    from z                       = associative
+    from (s z)                   = commutative
+    from (s s z)                 = idempotent
+    from (s s s z)               = selective
+    from (s s s s z)             = cancellative
+    from (s s s s s z)           = leftIdentity
+    from (s s s s s s z)         = rightIdentity
+    from (s s s s s s s z)       = leftZero
+    from (s s s s s s s s z)     = rightZero
+    from (s s s s s s s s s z)   = distributesOverˡ
+    from (s s s s s s s s s s z) = distributesOverʳ
+    from (s s s s s s s s s s s ())
 
     left-inverse-of : ∀ x → from (to x) ≡ x
     left-inverse-of associative      = ≡.refl
@@ -234,9 +234,6 @@ record Code k : Set (sucˡ k) where
 
     open FiniteSet finiteSet public
     open FiniteProps finiteSet public
-
-  allAppliedProperties : List (Property K)
-  allAppliedProperties = FiniteSet.enumₗ Property.finiteSet
 
 record IsSubcode {k k′} (sub : Code k) (sup : Code k′) : Set (k ⊔ˡ k′) where
   constructor subcode
@@ -432,11 +429,13 @@ module _ {k} {code : Code k} where
   ⇒ₚ-MP : ∀ {Π Π′ π} → π ∈ₚ Π′ → Π′ ⇒ₚ Π → π ∈ₚ Π
   ⇒ₚ-MP {Π = Π} {Π′} {π} hasπ has⇒ = ⇒ₚ-→ₚ has⇒ π hasπ
 
-  -- IsSubcode sub sup = ∀ n → ¬ Sub.K n ⊎ LeftInverse (Sub.K.setoid n) (Sup.K.setoid n)
+  ⇒ₚ-narrow : ∀ {Π Π′ Π′′ : Properties code} (hasΠ′ : Π′ ⇒ₚ Π) ⦃ hasΠ′′ : Π′′ ⇒ₚ Π′ ⦄ → Π′′ ⇒ₚ Π
+  ⇒ₚ-narrow hasΠ′ ⦃ hasΠ′′ ⦄ = ⇒ₚ-trans hasΠ′′ hasΠ′
 
 module _ {k k′} {sub : Code k} {sup : Code k′} (isSub : IsSubcode sub sup) where
-  module Sub = Code sub
-  module Sup = Code sup
+  private
+    module Sub = Code sub
+    module Sup = Code sup
 
   open IsSubcode isSub public
 

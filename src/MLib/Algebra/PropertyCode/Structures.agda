@@ -2,7 +2,6 @@ module MLib.Algebra.PropertyCode.Structures where
 
 open import MLib.Prelude
 open import MLib.Prelude.Finite
-open import MLib.Algebra.Instances
 
 open import MLib.Algebra.PropertyCode.RawStruct public
 open import MLib.Algebra.PropertyCode.Core public
@@ -22,7 +21,7 @@ open import Function.Equality using (_⟨$⟩_) renaming (cong to feCong)
 open import Category.Applicative
 
 --------------------------------------------------------------------------------
---  Some named property combinations
+--  Combinators for constructing property sets from smaller sets
 --------------------------------------------------------------------------------
 
 subΠ : ∀ {k k′} {code : Code k} {code′ : Code k′} →
@@ -44,6 +43,10 @@ subΠ′ : ∀ {k k′} {code : Code k} {code′ : Code k′} →
      Properties code → List (Property K′) → Properties code′
 subΠ′ f Π πs = subΠ f Π (fromList πs)
 
+--------------------------------------------------------------------------------
+--  Code Types
+--------------------------------------------------------------------------------
+
 data MagmaK : ℕ → Set where
   ∙ : MagmaK 2
 
@@ -54,6 +57,10 @@ data MonoidK : ℕ → Set where
 data BimonoidK : ℕ → Set where
   0# 1# : BimonoidK 0
   + * : BimonoidK 2
+
+--------------------------------------------------------------------------------
+--  Code Proofs
+--------------------------------------------------------------------------------
 
 module _ where
   open Code
@@ -90,6 +97,9 @@ module _ where
   isFiniteAt bimonoidCode 2 = enumerable-isFiniteSet (+ ∷ * ∷ []) λ {+ → here ≡.refl; * → there (here ≡.refl)}
   isFiniteAt bimonoidCode (suc (suc (suc _))) = enumerable-isFiniteSet [] λ ()
 
+--------------------------------------------------------------------------------
+--  Subparts of bimonoids
+--------------------------------------------------------------------------------
 
 +-part : ∀ {n} → BimonoidK n → Maybe (MonoidK n)
 +-part 0# = just ε
@@ -101,6 +111,9 @@ module _ where
 *-part * = just ∙
 *-part _ = nothing
 
+--------------------------------------------------------------------------------
+--  Some named property combinations
+--------------------------------------------------------------------------------
 
 open PropertyC using (_on_; _is_for_; _⟨_⟩ₚ_)
 
@@ -130,55 +143,37 @@ isSemiring =
   ∷ []
   ))
 
-module _ {k k′} {code : Code k} {code′ : Code k′} where
-  private
-    module K = Code code
-    module K′ = Code code′
-    open K using (K)
-    open K′ using () renaming (K to K′)
+--------------------------------------------------------------------------------
+--  Subcode Proofs
+--------------------------------------------------------------------------------
 
-    liftK : (∀ {n} → K′ n → Maybe (K n)) → {ns : List ℕ} → All K′ ns → Maybe (All K ns)
-    liftK f [] = just []
-    liftK f (px ∷ ak) with f px | liftK f ak
-    liftK f (px ∷ ak) | just px′ | just ak′ = just (px′ ∷ ak′)
-    liftK f (px ∷ ak) | _ | _ = nothing
+magma⊂monoid : IsSubcode magmaCode monoidCode
+magma⊂monoid .subK→supK ∙ = ∙
+magma⊂monoid .supK→subK ∙ = just ∙
+magma⊂monoid .supK→subK ε = nothing
+magma⊂monoid .acrossSub ∙ = ≡.refl
 
-    liftπ : (∀ {n} → K′ n → Maybe (K n)) → Property K′ → Maybe (Property K)
-    liftπ f (π , κs) with liftK f κs
-    liftπ f (π , κs) | just κs′ = just (π , κs′)
-    liftπ f (π , κs) | nothing = nothing
++-monoid⊂bimonoid : IsSubcode monoidCode bimonoidCode
++-monoid⊂bimonoid .subK→supK ∙ = +
++-monoid⊂bimonoid .subK→supK ε = 0#
++-monoid⊂bimonoid .supK→subK + = just ∙
++-monoid⊂bimonoid .supK→subK 0# = just ε
++-monoid⊂bimonoid .supK→subK _ = nothing
++-monoid⊂bimonoid .acrossSub ∙ = ≡.refl
++-monoid⊂bimonoid .acrossSub ε = ≡.refl
 
-  liftΠ : (∀ {n} → K′ n → Maybe (K n)) → Properties code → Properties code′
-  hasProperty (liftΠ f Π) π with liftπ f π
-  hasProperty (liftΠ f Π) π | just π′ = hasProperty Π π′
-  hasProperty (liftΠ f Π) π | nothing = false
+*-monoid⊂bimonoid : IsSubcode monoidCode bimonoidCode
+*-monoid⊂bimonoid .subK→supK ∙ = *
+*-monoid⊂bimonoid .subK→supK ε = 1#
+*-monoid⊂bimonoid .supK→subK * = just ∙
+*-monoid⊂bimonoid .supK→subK 1# = just ε
+*-monoid⊂bimonoid .supK→subK _ = nothing
+*-monoid⊂bimonoid .acrossSub ∙ = ≡.refl
+*-monoid⊂bimonoid .acrossSub ε = ≡.refl
 
-module _ where
-  open LeftInverse
-
-  magmaSubcodeMonoid : IsSubcode magmaCode monoidCode
-  magmaSubcodeMonoid .subK→supK ∙ = ∙
-  magmaSubcodeMonoid .supK→subK ∙ = just ∙
-  magmaSubcodeMonoid .supK→subK ε = nothing
-  magmaSubcodeMonoid .acrossSub ∙ = ≡.refl
-
-  +-monoidSubcodeBimonoid : IsSubcode monoidCode bimonoidCode
-  +-monoidSubcodeBimonoid .subK→supK ∙ = +
-  +-monoidSubcodeBimonoid .subK→supK ε = 0#
-  +-monoidSubcodeBimonoid .supK→subK + = just ∙
-  +-monoidSubcodeBimonoid .supK→subK 0# = just ε
-  +-monoidSubcodeBimonoid .supK→subK _ = nothing
-  +-monoidSubcodeBimonoid .acrossSub ∙ = ≡.refl
-  +-monoidSubcodeBimonoid .acrossSub ε = ≡.refl
-
-  *-monoidSubcodeBimonoid : IsSubcode monoidCode bimonoidCode
-  *-monoidSubcodeBimonoid .subK→supK ∙ = *
-  *-monoidSubcodeBimonoid .subK→supK ε = 1#
-  *-monoidSubcodeBimonoid .supK→subK * = just ∙
-  *-monoidSubcodeBimonoid .supK→subK 1# = just ε
-  *-monoidSubcodeBimonoid .supK→subK _ = nothing
-  *-monoidSubcodeBimonoid .acrossSub ∙ = ≡.refl
-  *-monoidSubcodeBimonoid .acrossSub ε = ≡.refl
+--------------------------------------------------------------------------------
+--  Conversion to structures from the agda standard library
+--------------------------------------------------------------------------------
 
 module Into {c ℓ} where
   open Algebra using (Semigroup; Monoid; CommutativeMonoid; Semiring)
@@ -186,7 +181,7 @@ module Into {c ℓ} where
   module _ (struct : Struct magmaCode c ℓ) where
     open Struct struct
 
-    semigroup : ∀ ⦃ hasSemigroup : HasEach isSemigroup ⦄ → Semigroup _ _
+    semigroup : ∀ ⦃ hasSemigroup : Hasₚ isSemigroup ⦄ → Semigroup _ _
     semigroup ⦃ hasSemigroup ⦄ = record
       { _∙_ = ⟦ ∙ ⟧
       ; isSemigroup = record
@@ -199,7 +194,7 @@ module Into {c ℓ} where
   module _ (struct : Struct monoidCode c ℓ) where
     open Struct struct
 
-    monoid : ⦃ hasMonoid : HasEach isMonoid ⦄ → Monoid c ℓ
+    monoid : ⦃ hasMonoid : Hasₚ isMonoid ⦄ → Monoid c ℓ
     monoid ⦃ hasMonoid ⦄ = record
       { isMonoid = record
         { isSemigroup = S.isSemigroup
@@ -208,11 +203,11 @@ module Into {c ℓ} where
       }
       where
       magmaPart : Struct magmaCode c ℓ
-      magmaPart = subStruct magmaSubcodeMonoid
+      magmaPart = substruct magma⊂monoid
 
-      module S = Semigroup (semigroup magmaPart ⦃ inSubStruct magmaSubcodeMonoid (get hasMonoid) ⦄)
+      module S = Semigroup (semigroup magmaPart ⦃ toSubstruct magma⊂monoid (narrow hasMonoid) ⦄)
 
-    commutativeMonoid : ⦃ hasCommutativeMonoid : HasEach isCommutativeMonoid ⦄ → CommutativeMonoid c ℓ
+    commutativeMonoid : ⦃ hasCommutativeMonoid : Hasₚ isCommutativeMonoid ⦄ → CommutativeMonoid c ℓ
     commutativeMonoid ⦃ hasCommutativeMonoid ⦄ = record
       { isCommutativeMonoid = record
         { isSemigroup = S.isSemigroup
@@ -222,14 +217,14 @@ module Into {c ℓ} where
       }
       where
       magmaPart : Struct magmaCode c ℓ
-      magmaPart = subStruct magmaSubcodeMonoid
+      magmaPart = substruct magma⊂monoid
 
-      module S = Semigroup (semigroup magmaPart ⦃ inSubStruct magmaSubcodeMonoid (get hasCommutativeMonoid) ⦄)
+      module S = Semigroup (semigroup magmaPart ⦃ toSubstruct magma⊂monoid (narrow hasCommutativeMonoid) ⦄)
 
   module _ (struct : Struct bimonoidCode c ℓ) where
     open Struct struct
 
-    semiring : ⦃ hasSemiring : HasEach isSemiring ⦄ → Semiring c ℓ
+    semiring : ⦃ hasSemiring : Hasₚ isSemiring ⦄ → Semiring c ℓ
     semiring ⦃ hasSemiring ⦄ = record
       { isSemiring = record
         { isSemiringWithoutAnnihilatingZero = record
@@ -244,10 +239,10 @@ module Into {c ℓ} where
       }
       where
       +-monoidPart : Struct monoidCode c ℓ
-      +-monoidPart = subStruct +-monoidSubcodeBimonoid
+      +-monoidPart = substruct +-monoid⊂bimonoid
 
       *-monoidPart : Struct monoidCode c ℓ
-      *-monoidPart = subStruct *-monoidSubcodeBimonoid
+      *-monoidPart = substruct *-monoid⊂bimonoid
 
-      module +-CM = CommutativeMonoid (commutativeMonoid +-monoidPart ⦃ inSubStruct +-monoidSubcodeBimonoid (get hasSemiring) ⦄)
-      module *-M = Monoid (monoid *-monoidPart ⦃ inSubStruct *-monoidSubcodeBimonoid (get hasSemiring) ⦄)
+      module +-CM = CommutativeMonoid (commutativeMonoid +-monoidPart ⦃ toSubstruct +-monoid⊂bimonoid (narrow hasSemiring) ⦄)
+      module *-M = Monoid (monoid *-monoidPart ⦃ toSubstruct *-monoid⊂bimonoid (narrow hasSemiring) ⦄)

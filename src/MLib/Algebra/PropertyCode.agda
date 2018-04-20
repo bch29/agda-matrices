@@ -4,7 +4,11 @@ open import MLib.Prelude
 open import MLib.Prelude.Finite
 
 open import MLib.Algebra.PropertyCode.RawStruct public
-open import MLib.Algebra.PropertyCode.Core public
+open import MLib.Algebra.PropertyCode.Core as Core public
+  using (Property; Properties; Code; IsSubcode; _∈ₚ_; _⇒ₚ_; ⟦_⟧P; module PropertyC)
+  renaming (⇒ₚ-narrow to narrow)
+
+open Core.PropKind public
 
 import Relation.Unary as U using (Decidable)
 open import Relation.Binary as B using (Setoid)
@@ -34,47 +38,44 @@ record Struct {k} (code : Code k) c ℓ : Set (sucˡ (c ⊔ˡ ℓ ⊔ˡ k)) wher
   field
     reify : ∀ {π} → π ∈ₚ Π → ⟦ π ⟧P rawStruct
 
-  HasEach : (Π′ : Properties code) → Set
-  HasEach Π′ = Π′ ⇒ₚ Π
+  Hasₚ : (Π′ : Properties code) → Set
+  Hasₚ Π′ = Π′ ⇒ₚ Π
 
-  HasList : List (Property K) → Set
-  HasList = HasEach ∘ fromList
+  Has : List (Property K) → Set
+  Has = Hasₚ ∘ Core.fromList
 
-  Has : Property K → Set
-  Has π = HasEach (singleton π)
+  Has₁ : Property K → Set
+  Has₁ π = Hasₚ (Core.singleton π)
 
   use : ∀ π ⦃ hasπ : π ∈ₚ Π ⦄ → ⟦ π ⟧P rawStruct
   use _ ⦃ hasπ ⦄ = reify hasπ
 
-  from : ∀ {Π′} (hasΠ′ : HasEach Π′) π ⦃ hasπ : π ∈ₚ Π′ ⦄ → ⟦ π ⟧P rawStruct
-  from hasΠ′ _ ⦃ hasπ ⦄ = use _ ⦃ ⇒ₚ-MP hasπ hasΠ′ ⦄
+  from : ∀ {Π′} (hasΠ′ : Hasₚ Π′) π ⦃ hasπ : π ∈ₚ Π′ ⦄ → ⟦ π ⟧P rawStruct
+  from hasΠ′ _ ⦃ hasπ ⦄ = use _ ⦃ Core.⇒ₚ-MP hasπ hasΠ′ ⦄
 
-  get : ∀ {Π′ Π′′} (hasΠ′ : HasEach Π′) ⦃ hasΠ′′ : Π′′ ⇒ₚ Π′ ⦄ → HasEach Π′′
-  get hasΠ′ ⦃ hasΠ′′ ⦄ = ⇒ₚ-trans hasΠ′′ hasΠ′
-
-  private
-    transferCongⁿ : ∀ {k′} {code′ : Code k′} (isSub : IsSubcode code′ code) → ∀ {n} (κ : Code.K code′ n) → Congruentₙ _≈_ ((appOp ∘ subK→supK {sub = code′} {sup = code} isSub) κ)
-    transferCongⁿ isSub {n} κ = congⁿ (subK→supK isSub κ)
-
-  subStruct : ∀ {k′} {code′ : Code k′} → IsSubcode code′ code → Struct code′ c ℓ
-  subStruct isSub = record
+  substruct : ∀ {k′} {code′ : Code k′} → IsSubcode code′ code → Struct code′ c ℓ
+  substruct isSub = record
     { rawStruct = record
       { Carrier = Carrier
       ; _≈_ = _≈_
-      ; appOp = appOp ∘ subK→supK isSub
+      ; appOp = appOp ∘ Core.subK→supK isSub
       ; isRawStruct = isRawStruct′
       }
-    ; Π = subcodeProperties isSub Π
-    ; reify = reinterpret isSub rawStruct isRawStruct′ _ ∘ reify ∘ fromSubcode isSub
+    ; Π = Core.subcodeProperties isSub Π
+    ; reify = Core.reinterpret isSub rawStruct isRawStruct′ _ ∘ reify ∘ Core.fromSubcode isSub
     }
     where
     isRawStruct′ = record
       { isEquivalence = isEquivalence
-      ; congⁿ = transferCongⁿ isSub
+      ; congⁿ = congⁿ ∘ Core.subK→supK isSub
       }
 
-  inSubStruct :
+  toSubstruct :
     ∀ {k′} {code′ : Code k′} (isSub : IsSubcode code′ code) →
-    ∀ {Π′ : Properties code′} (hasΠ′ : HasEach (supcodeProperties isSub Π′)) →
-    Π′ ⇒ₚ subcodeProperties isSub Π
-  inSubStruct isSub hasΠ′ = →ₚ-⇒ₚ λ π hasπ → fromSupcode isSub (⇒ₚ-→ₚ hasΠ′ (mapProperty (subK→supK isSub) π) (fromSupcode′ isSub hasπ))
+    ∀ {Π′ : Properties code′} (hasΠ′ : Hasₚ (Core.supcodeProperties isSub Π′)) →
+    Π′ ⇒ₚ Core.subcodeProperties isSub Π
+  toSubstruct isSub hasΠ′ = Core.→ₚ-⇒ₚ λ π hasπ →
+    Core.fromSupcode isSub
+      (Core.⇒ₚ-→ₚ hasΠ′
+        (Core.mapProperty (Core.subK→supK isSub) π)
+        (Core.fromSupcode′ isSub hasπ))
