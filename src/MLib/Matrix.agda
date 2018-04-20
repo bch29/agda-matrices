@@ -17,7 +17,7 @@ module _ {ℓ} where
 
 module _ {c ℓ} (struct : Struct bimonoidCode c ℓ) where
   module S = Struct struct renaming (Carrier to S; _≈_ to _≈′_)
-  open S using (S; _≈′_; _⟨_⟩_; ⟦_⟧; Has; HasList; HasEach; use; from)
+  open S using (S; _≈′_; _⟨_⟩_; ⟦_⟧; Has; HasList; HasEach; use; from; subStruct; inSubStruct; get; cong)
 
   module _ {m n} where
 
@@ -81,24 +81,26 @@ module _ {c ℓ} (struct : Struct bimonoidCode c ℓ) where
 
 
 
-  module _ ⦃ +-commMonoid : HasEach (liftΠ +-part isCommutativeMonoid) ⦄ where
-    +-commutativeMonoid : CommutativeMonoid c ℓ
-    +-commutativeMonoid = Into.commutativeMonoid +-dagma
+  -- module _ ⦃ +-commMonoid : HasEach (supcodeProperties +-monoidSubcodeBimonoid isCommutativeMonoid) ⦄ where
+  --   +-commutativeMonoid : CommutativeMonoid c ℓ
+  --   +-commutativeMonoid = Into.commutativeMonoid (subStruct +-monoidSubcodeBimonoid) ⦃ inSubStruct +-monoidSubcodeBimonoid +-commMonoid ⦄
 
---       private
---         module M where
---           open import Algebra.Operations.CommutativeMonoid +-commutativeMonoid public
---           open import Algebra.Properties.CommutativeMonoid +-commutativeMonoid public
---       open M using (sumTable; sumTable-syntax)
+    -- private
+    --   module M where
+    --     open import Algebra.Operations.CommutativeMonoid +-commutativeMonoid public
+    --     open import Algebra.Properties.CommutativeMonoid +-commutativeMonoid public
+    -- open M using (sumTable; sumTable-syntax)
 
-      -- sumDistribˡ : ∀ {n} c f → c ⊛ sum n f ≈′ ∑[ i < n ] (c ⊛ f i)
-      -- sumDistribˡ {Nat.zero} _ _ = proj₂ S.zero _
-      -- sumDistribˡ {Nat.suc n} c f =
-      --   begin
-      --     c ⊛ (f _ ⊕ sum n (f ∘ Fin.suc))                 ≈⟨ proj₁ S.distrib _ _ _ ⟩
-      --     c ⊛ f _ ⊕ c ⊛ sum _ (f ∘ Fin.suc)               ≈⟨ S.+-cong S.refl (sumDistribˡ c (f ∘ Fin.suc)) ⟩
-      --     c ⊛ f _ ⊕ sum _ (λ x → c ⊛ (f ∘ Fin.suc) x)     ∎
-      --   where open EqReasoning S.setoid
+    -- sumDistribˡ :
+    --   ⦃ props : HasList (0# is rightZero for * ∷ * ⟨ distributesOverˡ ⟩ₚ + ∷ []) ⦄ →
+    --   ∀ {n} x (t : Table S n) → x ⟨ * ⟩ sumTable t ≈′ ∑[ i < n ] (x ⟨ * ⟩ lookup t i)
+    -- sumDistribˡ ⦃ props ⦄ {Nat.zero} x f = from props (0# is rightZero for *) x
+    -- sumDistribˡ {Nat.suc n} x t =
+    --   begin
+    --     x ⟨ * ⟩ (Table.head t ⟨ + ⟩ sumTable (Table.tail t))                     ≈⟨ ? ⟩
+    --     (x ⟨ * ⟩ Table.head t) ⟨ + ⟩ (x ⟨ * ⟩ sumTable (Table.tail t))           ≈⟨ cong + S.refl (sumDistribˡ x (Table.tail t)) ⟩
+    --     (x ⟨ * ⟩ Table.head t) ⟨ + ⟩ sumTable (tabulate (λ i → x ⟨ * ⟩ Table.lookup ? i))   ∎
+    --   where open EqReasoning S.setoid
 
   --   sumDistribʳ : ∀ {n} c f → sum n f ⊛ c ≈′ ∑[ i < n ] (f i ⊛ c)
   --   sumDistribʳ {Nat.zero} _ _ = proj₁ S.zero _
