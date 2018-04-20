@@ -240,13 +240,17 @@ record Code k : Set (sucˡ k) where
   allAppliedProperties : List (Property K)
   allAppliedProperties = FiniteSet.enumerate Property.finiteSet
 
+record IsSubcode {k k′} (sub : Code k) (sup : Code k′) : Set (k ⊔ˡ k′) where
+  constructor subcode
 
-IsSubcode : ∀ {k k′} → Code k → Code k′ → Set (k ⊔ˡ k′)
-IsSubcode sub sup = ∀ n → ¬ Sub.K n ⊎ LeftInverse (Sub.K.setoid n) (Sup.K.setoid n)
-  where
+  private
     module Sub = Code sub
     module Sup = Code sup
 
+  field
+    subK→supK : ∀ {n} → Sub.K n → Sup.K n
+    supK→subK : ∀ {n} → Sup.K n → Maybe (Sub.K n)
+    acrossSub : ∀ {n} (κ : Sub.K n) → supK→subK (subK→supK κ) ≡ just κ
 
 mapProperty :
   ∀ {k k′} {K : ℕ → Set k} {K′ : ℕ → Set k′}
@@ -436,21 +440,7 @@ module _ {k k′} {sub : Code k} {sup : Code k′} (isSub : IsSubcode sub sup) w
   module Sub = Code sub
   module Sup = Code sup
 
-
-  subK→supK : ∀ {n} → Sub.K n → Sup.K n
-  subK→supK {n} with isSub n
-  subK→supK {n} | inj₁ ¬k = ⊥-elim ∘ ¬k
-  subK→supK {n} | inj₂ linv = LeftInverse.to linv ⟨$⟩_
-
-  supK→subK : ∀ {n} → Sup.K n → Maybe (Sub.K n)
-  supK→subK {n} with isSub n
-  supK→subK {n} | inj₁ _ = λ _ → nothing
-  supK→subK {n} | inj₂ linv = just ∘ (LeftInverse.from linv ⟨$⟩_)
-
-  acrossSub : ∀ {n} {κ : Sub.K n} → supK→subK (subK→supK κ) ≡ just κ
-  acrossSub {n} with isSub n
-  acrossSub {n} {κ} | inj₁ ¬κ = ⊥-elim (¬κ κ)
-  acrossSub {n} | inj₂ linv = ≡.cong just (LeftInverse.left-inverse-of linv _)
+  open IsSubcode isSub public
 
   subcodeProperties : Properties sup → Properties sub
   hasProperty (subcodeProperties Π) = hasProperty Π ∘ mapProperty subK→supK
@@ -480,7 +470,7 @@ module _ {k k′} {sub : Code k} {sup : Code k′} (isSub : IsSubcode sub sup) w
     lem : List.All.traverse supK→subK (List.All.map subK→supK κs) ≡ just κs
     lem = begin
       List.All.traverse supK→subK (List.All.map subK→supK κs) ≡⟨ List-All.traverse-map supK→subK subK→supK κs ⟩
-      List.All.traverse (supK→subK ∘ subK→supK) κs ≡⟨ List-All.traverse-cong (supK→subK ∘ subK→supK) just (λ _ → acrossSub) κs ⟩
+      List.All.traverse (supK→subK ∘ subK→supK) κs ≡⟨ List-All.traverse-cong (supK→subK ∘ subK→supK) just acrossSub κs ⟩
       List.All.traverse just κs ≡⟨ List-All.traverse-just κs ⟩
       just κs ∎
   fromSupcode′ {π , κs} π∈Π ._∈ₚ_.truth | p rewrite p = π∈Π ._∈ₚ_.truth

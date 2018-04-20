@@ -156,64 +156,29 @@ module _ {k k′} {code : Code k} {code′ : Code k′} where
 module _ where
   open LeftInverse
 
-  private
-    magma↞monoid2 : MagmaK 2 ↞ MonoidK 2
-    magma↞monoid2 .to ._⟨$⟩_ ∙ = ∙
-    magma↞monoid2 .to .feCong ≡.refl = ≡.refl
-    magma↞monoid2 .from ._⟨$⟩_ ∙ = ∙
-    magma↞monoid2 .from .feCong ≡.refl = ≡.refl
-    magma↞monoid2 .left-inverse-of ∙ = ≡.refl
-
   magmaSubcodeMonoid : IsSubcode magmaCode monoidCode
-  magmaSubcodeMonoid 0 = inj₁ λ ()
-  magmaSubcodeMonoid 1 = inj₁ λ ()
-  magmaSubcodeMonoid 2 = inj₂ magma↞monoid2
-  magmaSubcodeMonoid (suc (suc (suc _))) = inj₁ λ ()
-
-  private
-    +-monoid↞bimonoid0 : MonoidK 0 ↞ BimonoidK 0
-    +-monoid↞bimonoid0 .to ._⟨$⟩_ ε = 0#
-    +-monoid↞bimonoid0 .to .feCong ≡.refl = ≡.refl
-    +-monoid↞bimonoid0 .from ._⟨$⟩_ 0# = ε
-    +-monoid↞bimonoid0 .from ._⟨$⟩_ 1# = ε
-    +-monoid↞bimonoid0 .from .feCong ≡.refl = ≡.refl
-    +-monoid↞bimonoid0 .left-inverse-of ε = ≡.refl
-
-    +-monoid↞bimonoid2 : MonoidK 2 ↞ BimonoidK 2
-    +-monoid↞bimonoid2 .to ._⟨$⟩_ ∙ = +
-    +-monoid↞bimonoid2 .to .feCong ≡.refl = ≡.refl
-    +-monoid↞bimonoid2 .from ._⟨$⟩_ + = ∙
-    +-monoid↞bimonoid2 .from ._⟨$⟩_ * = ∙
-    +-monoid↞bimonoid2 .from .feCong ≡.refl = ≡.refl
-    +-monoid↞bimonoid2 .left-inverse-of ∙ = ≡.refl
-
-    *-monoid↞bimonoid0 : MonoidK 0 ↞ BimonoidK 0
-    *-monoid↞bimonoid0 .to ._⟨$⟩_ ε = 1#
-    *-monoid↞bimonoid0 .to .feCong ≡.refl = ≡.refl
-    *-monoid↞bimonoid0 .from ._⟨$⟩_ 0# = ε
-    *-monoid↞bimonoid0 .from ._⟨$⟩_ 1# = ε
-    *-monoid↞bimonoid0 .from .feCong ≡.refl = ≡.refl
-    *-monoid↞bimonoid0 .left-inverse-of ε = ≡.refl
-
-    *-monoid↞bimonoid2 : MonoidK 2 ↞ BimonoidK 2
-    *-monoid↞bimonoid2 .to ._⟨$⟩_ ∙ = *
-    *-monoid↞bimonoid2 .to .feCong ≡.refl = ≡.refl
-    *-monoid↞bimonoid2 .from ._⟨$⟩_ + = ∙
-    *-monoid↞bimonoid2 .from ._⟨$⟩_ * = ∙
-    *-monoid↞bimonoid2 .from .feCong ≡.refl = ≡.refl
-    *-monoid↞bimonoid2 .left-inverse-of ∙ = ≡.refl
+  magmaSubcodeMonoid .subK→supK ∙ = ∙
+  magmaSubcodeMonoid .supK→subK ∙ = just ∙
+  magmaSubcodeMonoid .supK→subK ε = nothing
+  magmaSubcodeMonoid .acrossSub ∙ = ≡.refl
 
   +-monoidSubcodeBimonoid : IsSubcode monoidCode bimonoidCode
-  +-monoidSubcodeBimonoid 0 = inj₂ +-monoid↞bimonoid0
-  +-monoidSubcodeBimonoid 1 = inj₁ λ ()
-  +-monoidSubcodeBimonoid 2 = inj₂ +-monoid↞bimonoid2
-  +-monoidSubcodeBimonoid (suc (suc (suc _))) = inj₁ λ ()
+  +-monoidSubcodeBimonoid .subK→supK ∙ = +
+  +-monoidSubcodeBimonoid .subK→supK ε = 0#
+  +-monoidSubcodeBimonoid .supK→subK + = just ∙
+  +-monoidSubcodeBimonoid .supK→subK 0# = just ε
+  +-monoidSubcodeBimonoid .supK→subK _ = nothing
+  +-monoidSubcodeBimonoid .acrossSub ∙ = ≡.refl
+  +-monoidSubcodeBimonoid .acrossSub ε = ≡.refl
 
   *-monoidSubcodeBimonoid : IsSubcode monoidCode bimonoidCode
-  *-monoidSubcodeBimonoid 0 = inj₂ *-monoid↞bimonoid0
-  *-monoidSubcodeBimonoid 1 = inj₁ λ ()
-  *-monoidSubcodeBimonoid 2 = inj₂ *-monoid↞bimonoid2
-  *-monoidSubcodeBimonoid (suc (suc (suc _))) = inj₁ λ ()
+  *-monoidSubcodeBimonoid .subK→supK ∙ = *
+  *-monoidSubcodeBimonoid .subK→supK ε = 1#
+  *-monoidSubcodeBimonoid .supK→subK * = just ∙
+  *-monoidSubcodeBimonoid .supK→subK 1# = just ε
+  *-monoidSubcodeBimonoid .supK→subK _ = nothing
+  *-monoidSubcodeBimonoid .acrossSub ∙ = ≡.refl
+  *-monoidSubcodeBimonoid .acrossSub ε = ≡.refl
 
 module Into {c ℓ} where
   open Algebra using (Semigroup; Monoid; CommutativeMonoid; Semiring)
@@ -245,7 +210,7 @@ module Into {c ℓ} where
       magmaPart : Struct magmaCode c ℓ
       magmaPart = subStruct magmaSubcodeMonoid
 
-      module S = Semigroup (semigroup magmaPart ⦃ inSubStruct magmaSubcodeMonoid {Π′ = isSemigroup} (get hasMonoid) ⦄)
+      module S = Semigroup (semigroup magmaPart ⦃ inSubStruct magmaSubcodeMonoid (get hasMonoid) ⦄)
 
     commutativeMonoid : ⦃ hasCommutativeMonoid : HasEach isCommutativeMonoid ⦄ → CommutativeMonoid c ℓ
     commutativeMonoid ⦃ hasCommutativeMonoid ⦄ = record
@@ -259,7 +224,7 @@ module Into {c ℓ} where
       magmaPart : Struct magmaCode c ℓ
       magmaPart = subStruct magmaSubcodeMonoid
 
-      module S = Semigroup (semigroup magmaPart ⦃ inSubStruct magmaSubcodeMonoid {Π′ = isSemigroup} (get hasCommutativeMonoid ⦃ {!_!} ⦄) ⦄)
+      module S = Semigroup (semigroup magmaPart ⦃ inSubStruct magmaSubcodeMonoid (get hasCommutativeMonoid) ⦄)
 
   module _ (struct : Struct bimonoidCode c ℓ) where
     open Struct struct
@@ -284,6 +249,5 @@ module Into {c ℓ} where
       *-monoidPart : Struct monoidCode c ℓ
       *-monoidPart = subStruct *-monoidSubcodeBimonoid
 
-      -- module +-CM = CommutativeMonoid (commutativeMonoid +-monoidPart ⦃ inSubStruct +-monoidSubcodeBimonoid {Π′ = isCommutativeMonoid} (get hasSemiring ⦃ {!!} ⦄) ⦄)
-      module +-CM = CommutativeMonoid (commutativeMonoid +-monoidPart ⦃ inSubStruct +-monoidSubcodeBimonoid {Π′ = isCommutativeMonoid} (get hasSemiring ⦃ {!!} ⦄) ⦄)
-      module *-M = Monoid (monoid *-monoidPart ⦃ inSubStruct *-monoidSubcodeBimonoid {Π′ = isMonoid} (get hasSemiring ⦃ {!?!} ⦄) ⦄)
+      module +-CM = CommutativeMonoid (commutativeMonoid +-monoidPart ⦃ inSubStruct +-monoidSubcodeBimonoid (get hasSemiring) ⦄)
+      module *-M = Monoid (monoid *-monoidPart ⦃ inSubStruct *-monoidSubcodeBimonoid (get hasSemiring) ⦄)

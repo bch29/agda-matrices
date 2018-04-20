@@ -55,9 +55,7 @@ record Struct {k} (code : Code k) c ℓ : Set (sucˡ (c ⊔ˡ ℓ ⊔ˡ k)) wher
 
   private
     transferCongⁿ : ∀ {k′} {code′ : Code k′} (isSub : IsSubcode code′ code) → ∀ {n} (κ : Code.K code′ n) → Congruentₙ _≈_ ((appOp ∘ subK→supK {sub = code′} {sup = code} isSub) κ)
-    transferCongⁿ isSub {n} κ with isSub n
-    transferCongⁿ isSub {n} κ | inj₁ empty = ⊥-elim (empty κ)
-    transferCongⁿ isSub {n} κ | inj₂ inj = congⁿ (LeftInverse.to inj ⟨$⟩ κ)
+    transferCongⁿ isSub {n} κ = congⁿ (subK→supK isSub κ)
 
   subStruct : ∀ {k′} {code′ : Code k′} → IsSubcode code′ code → Struct code′ c ℓ
   subStruct isSub = record
