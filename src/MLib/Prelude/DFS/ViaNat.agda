@@ -112,18 +112,18 @@ module _ {c p} (A-finiteSet : FiniteSet c p) where
     toDigits-fromDigits i xs | ds , p = lookupOrElse-fromDigits i ds xs p
 
   asNat : LeftInverse (FiniteSet.setoid A-finiteSet ⇨ ≡.setoid Bool) (≡.setoid ℕ)
-  _⟨$⟩_ (to asNat) f = fromDigits (Table.toList (Table.map (fromBool ∘ (f ⟨$⟩_)) A.enumTable))
-  cong (to asNat) {f} p = ≡.cong fromDigits {x = Table.toList (Table.map (fromBool ∘ (f ⟨$⟩_)) A.enumTable)} (List.tabulate-cong λ x → ≡.cong fromBool (p A.refl))
+  _⟨$⟩_ (to asNat) f = fromDigits (Table.toList (Table.map (fromBool ∘ (f ⟨$⟩_)) A.enumₜ))
+  cong (to asNat) {f} p = ≡.cong fromDigits {x = Table.toList (Table.map (fromBool ∘ (f ⟨$⟩_)) A.enumₜ)} (List.tabulate-cong λ x → ≡.cong fromBool (p A.refl))
   _⟨$⟩_ (_⟨$⟩_ (from asNat) n) x = toBool (lookupOrElse Fin.zero (A.toIx x) (proj₁ (toDigits 2 n)))
   cong (_⟨$⟩_ (from asNat) n) {x} {y} = ≡.cong (λ i → toBool (lookupOrElse Fin.zero i (proj₁ (toDigits 2 n)))) ∘ cong (to A.ontoFin)
   cong (from asNat) {n} ≡.refl = cong (_⟨$⟩_ (from asNat) n)
   left-inverse-of asNat f {x} {y} p =
     begin
-      toBool (lookupOrElse Fin.zero (A.toIx x) (proj₁ (toDigits 2 (fromDigits (Table.toList (Table.map (fromBool ∘ (f ⟨$⟩_)) A.enumTable))))))
-    ≡⟨ ≡.cong toBool (toDigits-fromDigits (A.toIx x) (Table.toList (Table.map (fromBool ∘ (f ⟨$⟩_)) A.enumTable))) ⟩
-      toBool (lookupOrElse Fin.zero (A.toIx x) (Table.toList (Table.map (fromBool ∘ (f ⟨$⟩_)) A.enumTable)))
+      toBool (lookupOrElse Fin.zero (A.toIx x) (proj₁ (toDigits 2 (fromDigits (Table.toList (Table.map (fromBool ∘ (f ⟨$⟩_)) A.enumₜ))))))
+    ≡⟨ ≡.cong toBool (toDigits-fromDigits (A.toIx x) (Table.toList (Table.map (fromBool ∘ (f ⟨$⟩_)) A.enumₜ))) ⟩
+      toBool (lookupOrElse Fin.zero (A.toIx x) (Table.toList (Table.map (fromBool ∘ (f ⟨$⟩_)) A.enumₜ)))
     ≡⟨ ≡.cong toBool (lookupOrElse-toList (A.toIx x) _) ⟩
-      toBool (Table.lookup (Table.map (fromBool ∘ (f ⟨$⟩_)) A.enumTable) (A.toIx x))
+      toBool (Table.lookup (Table.map (fromBool ∘ (f ⟨$⟩_)) A.enumₜ) (A.toIx x))
     ≡⟨⟩
       toBool (fromBool (f ⟨$⟩ (from A.ontoFin ⟨$⟩ (to A.ontoFin ⟨$⟩ x))))
     ≡⟨ toBool-fromBool _ ⟩

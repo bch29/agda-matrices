@@ -21,8 +21,8 @@ open List using ([]; _∷_)
 open FiniteSet finiteSet renaming (Carrier to A)
 
 private
-  enumTableAt : ∀ {N} → OntoFin N → Table A N
-  enumTableAt = tabulate ∘ _⟨$⟩_ ∘ LeftInverse.from
+  enumₜAt : ∀ {N} → OntoFin N → Table A N
+  enumₜAt = tabulate ∘ _⟨$⟩_ ∘ LeftInverse.from
 
 module _ {c ℓ} (icMonoid : IdempotentCommutativeMonoid c ℓ) where
   module S = IdempotentCommutativeMonoid icMonoid
@@ -31,10 +31,10 @@ module _ {c ℓ} (icMonoid : IdempotentCommutativeMonoid c ℓ) where
   open import Algebra.Properties.CommutativeMonoid S.commutativeMonoid
 
   foldMap : (A → S) → S
-  foldMap f = sumTable (Table.map f enumTable)
+  foldMap f = sumₜ (Table.map f enumₜ)
 
   foldMap-cong : ∀ {f g} → (∀ x → f x ≈′ g x) → foldMap f ≈′ foldMap g
-  foldMap-cong p = sumTable-cong (p ∘ lookup enumTable)
+  foldMap-cong p = sumₜ-cong (p ∘ lookup enumₜ)
 
   private
     inhabited : ∀ {N} (i : Fin N) → ∃ λ n → N ≡ Nat.suc n
@@ -47,11 +47,11 @@ module _ {c ℓ} (icMonoid : IdempotentCommutativeMonoid c ℓ) where
   foldMap-const : ∀ {x} → x ∙ foldMap (λ _ → x) ≈′ x
   foldMap-const {x} =
     begin
-      x ∙ foldMap (λ _ → x)                          ≡⟨⟩
-      x ∙ sumTable (Table.map (λ _ → x) enumTable)   ≡⟨⟩
-      x ∙ sumTable (Table.replicate {N} x)           ≡⟨⟩
-      sumTable (Table.replicate {Nat.suc N} x)       ≈⟨ sumTable-idem-replicate N (S.idem x) ⟩
-      x                                              ∎
+      x ∙ foldMap (λ _ → x)                  ≡⟨⟩
+      x ∙ sumₜ (Table.map (λ _ → x) enumₜ)   ≡⟨⟩
+      x ∙ sumₜ (Table.replicate {N} x)       ≡⟨⟩
+      sumₜ (Table.replicate {Nat.suc N} x)   ≈⟨ sumₜ-idem-replicate N (S.idem x) ⟩
+      x                                      ∎
     where open EqReasoning S.setoid
 
   private
@@ -60,24 +60,24 @@ module _ {c ℓ} (icMonoid : IdempotentCommutativeMonoid c ℓ) where
       to = LeftInverse.to ontoFin′ ⟨$⟩_
       from-to = LeftInverse.left-inverse-of ontoFin′
 
-      enumTable′ : Table A (Nat.suc n)
-      enumTable′ = enumTableAt ontoFin′
+      enumₜ′ : Table A (Nat.suc n)
+      enumₜ′ = enumₜAt ontoFin′
 
       ap : setoid ⟶ S.setoid → A → S
       ap = _⟨$⟩_
 
-      enumTable-complete′ : ∀ (func : setoid ⟶ S.setoid) x → (func ⟨$⟩ x) ∙ sumTable (map (ap func) enumTable′) ≈′ sumTable (map (ap func) enumTable′)
-      enumTable-complete′ func x =
+      enumₜ-complete′ : ∀ (func : setoid ⟶ S.setoid) x → (func ⟨$⟩ x) ∙ sumₜ (map (ap func) enumₜ′) ≈′ sumₜ (map (ap func) enumₜ′)
+      enumₜ-complete′ func x =
         begin
-          f x ∙ sumTable (map f enumTable′)                                         ≈⟨ ∙-cong S.refl (sumTable-permute (map f enumTable′) (Fin.swapIndices Fin.zero i)) ⟩
-          f x ∙ sumTable (permute (Fin.swapIndices Fin.zero i) (map f enumTable′))  ≡⟨⟩
-          f x ∙ (f (from (to x)) ∙ _)                                               ≈⟨ ∙-cong S.refl (∙-cong (cong func (from-to _)) S.refl) ⟩
-          f x ∙ (f x ∙ _)                                                           ≈⟨ S.sym (S.assoc _ _ _) ⟩
-          (f x ∙ f x) ∙ _                                                           ≈⟨ ∙-cong (S.idem _) S.refl ⟩
-          f x ∙ _                                                                   ≈⟨ ∙-cong (cong func (sym (from-to _))) S.refl ⟩
-          f (from (to x)) ∙ _                                                       ≡⟨⟩
-          sumTable (permute (Fin.swapIndices Fin.zero i) (map f enumTable′))        ≈⟨ S.sym (sumTable-permute (map f enumTable′) (Fin.swapIndices Fin.zero i)) ⟩
-          sumTable (map f enumTable′)                                               ∎
+          f x ∙ sumₜ (map f enumₜ′)                                         ≈⟨ ∙-cong S.refl (sumₜ-permute (map f enumₜ′) (Fin.swapIndices Fin.zero i)) ⟩
+          f x ∙ sumₜ (permute (Fin.swapIndices Fin.zero i) (map f enumₜ′))  ≡⟨⟩
+          f x ∙ (f (from (to x)) ∙ _)                                       ≈⟨ ∙-cong S.refl (∙-cong (cong func (from-to _)) S.refl) ⟩
+          f x ∙ (f x ∙ _)                                                   ≈⟨ S.sym (S.assoc _ _ _) ⟩
+          (f x ∙ f x) ∙ _                                                   ≈⟨ ∙-cong (S.idem _) S.refl ⟩
+          f x ∙ _                                                           ≈⟨ ∙-cong (cong func (sym (from-to _))) S.refl ⟩
+          f (from (to x)) ∙ _                                               ≡⟨⟩
+          sumₜ (permute (Fin.swapIndices Fin.zero i) (map f enumₜ′))        ≈⟨ S.sym (sumₜ-permute (map f enumₜ′) (Fin.swapIndices Fin.zero i)) ⟩
+          sumₜ (map f enumₜ′)                                               ∎
         where
           f = ap func
           i = to x
@@ -85,19 +85,19 @@ module _ {c ℓ} (icMonoid : IdempotentCommutativeMonoid c ℓ) where
           open EqReasoning S.setoid
 
   private
-    enumTable-complete′′ :
+    enumₜ-complete′′ :
       ∀ {N} (ontoFin′ : OntoFin N) (f : setoid ⟶ S.setoid) x
-      → (f ⟨$⟩ x) ∙ sumTable (Table.map (f ⟨$⟩_) (enumTableAt ontoFin′))
-        ≈′ sumTable (Table.map (f ⟨$⟩_) (enumTableAt ontoFin′))
-    enumTable-complete′′ ontoFin′ f x with inhabited (LeftInverse.to ontoFin′ ⟨$⟩ x)
-    enumTable-complete′′ ontoFin′ f x | n , ≡.refl = enumTable-complete′ ontoFin′ f x
+      → (f ⟨$⟩ x) ∙ sumₜ (Table.map (f ⟨$⟩_) (enumₜAt ontoFin′))
+        ≈′ sumₜ (Table.map (f ⟨$⟩_) (enumₜAt ontoFin′))
+    enumₜ-complete′′ ontoFin′ f x with inhabited (LeftInverse.to ontoFin′ ⟨$⟩ x)
+    enumₜ-complete′′ ontoFin′ f x | n , ≡.refl = enumₜ-complete′ ontoFin′ f x
 
-    sum/map-hom : ∀ {n} {a}{A : Set a} (f : A → S) (t : Table A n) → sum (List.map f (toList t)) ≡ sumTable (map f t)
+    sum/map-hom : ∀ {n} {a}{A : Set a} (f : A → S) (t : Table A n) → sumₗ (List.map f (toList t)) ≡ sumₜ (map f t)
     sum/map-hom f t =
       begin
-        sum (List.map f (toList t))   ≡⟨ ≡.cong sum (Table.map-toList-hom t) ⟩
-        sum (toList (map f t))        ≡⟨ ≡.sym (sumTable-toList (map f t)) ⟩
-        sumTable (map f t)            ∎
+        sumₗ (List.map f (toList t))   ≡⟨ ≡.cong sumₗ (Table.map-toList-hom t) ⟩
+        sumₗ (toList (map f t))        ≡⟨ ≡.sym (sumₜ-toList (map f t)) ⟩
+        sumₜ (map f t)                 ∎
       where
         open ≡.Reasoning
 
@@ -109,17 +109,17 @@ module _ {c ℓ} (icMonoid : IdempotentCommutativeMonoid c ℓ) where
   -- enumeration (even though the powerset monoid is quite difficult to
   -- implement in Agda so this proof is not present).
 
-  enumTable-complete : ∀ f x → (f ⟨$⟩ x) ∙ foldMap (f ⟨$⟩_) ≈′ foldMap (f ⟨$⟩_)
-  enumTable-complete = enumTable-complete′′ ontoFin
+  enumₜ-complete : ∀ f x → (f ⟨$⟩ x) ∙ foldMap (f ⟨$⟩_) ≈′ foldMap (f ⟨$⟩_)
+  enumₜ-complete = enumₜ-complete′′ ontoFin
 
-  enumerate-complete : ∀ (f : setoid ⟶ S.setoid) x → (f ⟨$⟩ x) ∙ sum (List.map (f ⟨$⟩_) enumerate) ≈′ sum (List.map (f ⟨$⟩_) enumerate)
-  enumerate-complete func x =
+  enumₗ-complete : ∀ (f : setoid ⟶ S.setoid) x → (f ⟨$⟩ x) ∙ sumₗ (List.map (f ⟨$⟩_) enumₗ) ≈′ sumₗ (List.map (f ⟨$⟩_) enumₗ)
+  enumₗ-complete func x =
     begin
-      f x ∙ sum (List.map f enumerate)           ≡⟨⟩
-      f x ∙ sum (List.map f (toList enumTable))  ≡⟨ ≡.cong₂ _∙_ ≡.refl (sum/map-hom f enumTable) ⟩
-      f x ∙ sumTable (map f enumTable)           ≈⟨ enumTable-complete func x ⟩
-      sumTable (map f enumTable)                 ≡⟨ ≡.sym (sum/map-hom f enumTable) ⟩
-      sum (List.map f enumerate)                 ∎
+      f x ∙ sumₗ (List.map f enumₗ)           ≡⟨⟩
+      f x ∙ sumₗ (List.map f (toList enumₜ))  ≡⟨ ≡.cong₂ _∙_ ≡.refl (sum/map-hom f enumₜ) ⟩
+      f x ∙ sumₜ (map f enumₜ)                ≈⟨ enumₜ-complete func x ⟩
+      sumₜ (map f enumₜ)                      ≡⟨ ≡.sym (sum/map-hom f enumₜ) ⟩
+      sumₗ (List.map f enumₗ)                 ∎
     where
       f = func ⟨$⟩_
       open EqReasoning S.setoid

@@ -3,7 +3,6 @@ module MLib.Algebra.PropertyCode.RawStruct where
 open import MLib.Prelude
 open import MLib.Prelude.Fin.Pieces
 open import MLib.Prelude.Finite
-open import MLib.Algebra.Instances
 
 open import Relation.Binary as B using (Setoid)
 

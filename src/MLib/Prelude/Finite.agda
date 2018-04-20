@@ -47,11 +47,11 @@ record IsFiniteSetoid {c ℓ} (setoid : Setoid c ℓ) (N : ℕ) : Set (c ⊔ˡ �
   fromIx-toIx : ∀ x → fromIx (toIx x) ≈ x
   fromIx-toIx = LeftInverse.left-inverse-of ontoFin
 
-  enumTable : Table A N
-  enumTable = tabulate fromIx
+  enumₜ : Table A N
+  enumₜ = tabulate fromIx
 
-  enumerate : List A
-  enumerate = Table.toList enumTable
+  enumₗ : List A
+  enumₗ = Table.toList enumₜ
 
 
 IsFiniteSet : ∀ {a} → Set a → ℕ → Set a
@@ -155,7 +155,7 @@ module _ {c} {A : Set c} {N} (isFiniteSet : IsFiniteSet A N) where
     module F = FiniteSet finiteSet
 
     Σᶠ : ∀ {p} → (A → Set p) → Set p
-    Σᶠ P = ∃ (P ∘ lookup F.enumTable)
+    Σᶠ P = ∃ (P ∘ lookup F.enumₜ)
 
   module _ {p ℓ} (finiteAt : A → FiniteSet p ℓ) where
     private
@@ -165,7 +165,7 @@ module _ {c} {A : Set c} {N} (isFiniteSet : IsFiniteSet A N) where
       pieces : P.Pieces A PW.N
       pieces = record
         { numPieces = N
-        ; pieces = F.enumTable
+        ; pieces = F.enumₜ
         }
 
       open P.Pieces pieces hiding (pieces)
@@ -304,10 +304,10 @@ module All′ {a} {A : Set a} where
 
 --   boolF-isFiniteSetoid : IsFiniteSetoid (A.setoid ⇨ ≡.setoid Bool) (2 Nat.^ A.N)
 --   _⟨$⟩_ (to (ontoFin boolF-isFiniteSetoid)) f =
---     let digits = Table.map (boolToFin ∘ (f ⟨$⟩_)) A.enumTable
+--     let digits = Table.map (boolToFin ∘ (f ⟨$⟩_)) A.enumₜ
 --     in from-n-ary digits
 --   cong (to (ontoFin boolF-isFiniteSetoid)) {f} {f′} p =
---     let t = Table.map (boolToFin ∘ (f ⟨$⟩_)) A.enumTable
+--     let t = Table.map (boolToFin ∘ (f ⟨$⟩_)) A.enumₜ
 --     in from-n-ary-cong t _ λ _ → ≡.cong boolToFin (p A.refl)
 --   _⟨$⟩_ (_⟨$⟩_ (from (ontoFin boolF-isFiniteSetoid)) i) x = {!!}
 --   cong (_⟨$⟩_ (from (ontoFin boolF-isFiniteSetoid)) i) = {!!}

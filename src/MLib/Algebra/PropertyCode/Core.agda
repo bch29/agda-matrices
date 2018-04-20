@@ -5,8 +5,6 @@ open import MLib.Prelude.Fin.Pieces
 open import MLib.Prelude.Finite
 import MLib.Prelude.Finite.Properties as FiniteProps
 open import MLib.Algebra.PropertyCode.RawStruct
-open import MLib.Algebra.Instances
-open import MLib.Prelude.DFS.ViaNat
 
 import Relation.Unary as U using (Decidable)
 open import Relation.Binary as B using (Setoid)
@@ -238,7 +236,7 @@ record Code k : Set (sucˡ k) where
     open FiniteProps finiteSet public
 
   allAppliedProperties : List (Property K)
-  allAppliedProperties = FiniteSet.enumerate Property.finiteSet
+  allAppliedProperties = FiniteSet.enumₗ Property.finiteSet
 
 record IsSubcode {k k′} (sub : Code k) (sup : Code k′) : Set (k ⊔ˡ k′) where
   constructor subcode
@@ -303,8 +301,8 @@ module _ {k} {code : Code k} where
     left-inverse-of : ∀ (Π : Properties code) {π π′} → π ≈ π′ → hasProperty Π π ≡ hasProperty Π π′
     left-inverse-of Π (≡.refl , p) rewrite All′.PW-≡ K p = ≡.refl
 
-  Properties↞ℕ : LeftInverse Properties-setoid (≡.setoid ℕ)
-  Properties↞ℕ = asNat Property.finiteSet ∘ⁱ Properties↞Func
+  -- Properties↞ℕ : LeftInverse Properties-setoid (≡.setoid ℕ)
+  -- Properties↞ℕ = asNat Property.finiteSet ∘ⁱ Properties↞Func
 
   -- Evaluates to 'true' only when every property is present.
 
@@ -396,10 +394,10 @@ module _ {k} {code : Code k} where
 
       impl-π : hasProperty Π₁ π BoolExtra.⇒ hasProperty Π₂ π ≡ true
       impl-π = begin
-        hasProperty Π₁ π BoolExtra.⇒ hasProperty Π₂ π                   ≡⟨ ≡.sym (proj₂ ∧.identity _) ⟩
-        (hasProperty Π₁ π BoolExtra.⇒ hasProperty Π₂ π) ∧ true ≡⟨ ∧.∙-cong (≡.refl {x = hasProperty Π₁ π BoolExtra.⇒ hasProperty Π₂ π}) (≡.sym implies-true) ⟩
-        (hasProperty Π₁ π BoolExtra.⇒ hasProperty Π₂ π) ∧ implies Π₁ Π₂ ≡⟨ Property.enumTable-complete icm implies-F π ⟩
-        implies Π₁ Π₂ ≡⟨ implies-true ⟩
+        hasProperty Π₁ π BoolExtra.⇒ hasProperty Π₂ π                     ≡⟨ ≡.sym (proj₂ ∧.identity _) ⟩
+        (hasProperty Π₁ π BoolExtra.⇒ hasProperty Π₂ π) ∧ true            ≡⟨ ∧.∙-cong (≡.refl {x = hasProperty Π₁ π BoolExtra.⇒ hasProperty Π₂ π}) (≡.sym implies-true) ⟩
+        (hasProperty Π₁ π BoolExtra.⇒ hasProperty Π₂ π) ∧ implies Π₁ Π₂   ≡⟨ Property.enumₜ-complete icm implies-F π ⟩
+        implies Π₁ Π₂                                                     ≡⟨ implies-true ⟩
         true ∎
 
   -- Form a set of properties from a single property

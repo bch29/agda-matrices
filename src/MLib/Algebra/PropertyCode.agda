@@ -2,7 +2,6 @@ module MLib.Algebra.PropertyCode where
 
 open import MLib.Prelude
 open import MLib.Prelude.Finite
-open import MLib.Algebra.Instances
 
 open import MLib.Algebra.PropertyCode.RawStruct public
 open import MLib.Algebra.PropertyCode.Core public
