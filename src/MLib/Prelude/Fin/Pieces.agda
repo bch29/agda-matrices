@@ -37,38 +37,38 @@ module _ {a} {A : Set a} {size : A → ℕ} (P : Pieces A size) where
   open Pieces P
 
   private
-    intoPiece′ : (numPieces : ℕ) (pieces : Table ℕ numPieces) (i : Fin numPieces) → Fin (lookup pieces i) → Fin (sum pieces)
-    intoPiece′ _ pieces zero j = inject+ (sum (tail pieces)) j
-    intoPiece′ _ pieces (suc i) j = raise (lookup pieces zero) (intoPiece′ _ _ i j)
+    intoPiece′ : {numPieces : ℕ} (pieces : Table ℕ numPieces) (i : Fin numPieces) → Fin (lookup pieces i) → Fin (sum pieces)
+    intoPiece′ pieces zero j = inject+ (sum (tail pieces)) j
+    intoPiece′ pieces (suc i) j = raise (lookup pieces zero) (intoPiece′ _ i j)
 
-    fromPiece : {numPieces : ℕ} {pieces : Table ℕ numPieces} → Fin (sum pieces) → Σ (Fin numPieces) (Fin ∘ lookup pieces)
-    fromPiece {zero} ()
-    fromPiece {suc n} {pieces} k with reduce+ (lookup pieces zero) k
-    fromPiece {suc n} k | inj₁ (k′ , _) = zero , k′
-    fromPiece {suc n} k | inj₂ (k′ , _) with fromPiece {n} k′
-    fromPiece {suc n} {_} k | inj₂ (k′ , _) | i , j = suc i , j
+    fromPiece′ : {numPieces : ℕ} {pieces : Table ℕ numPieces} → Fin (sum pieces) → Σ (Fin numPieces) (Fin ∘ lookup pieces)
+    fromPiece′ {zero} ()
+    fromPiece′ {suc n} {pieces} k with reduce+ (lookup pieces zero) k
+    fromPiece′ {suc n} k | inj₁ (k′ , _) = zero , k′
+    fromPiece′ {suc n} k | inj₂ (k′ , _) with fromPiece′ {n} k′
+    fromPiece′ {suc n} {_} k | inj₂ (k′ , _) | i , j = suc i , j
 
-    fromPiece-intoPiece : {numPieces : ℕ} {pieces : Table ℕ numPieces} (i : Fin numPieces) (j : Fin (lookup pieces i)) → fromPiece (intoPiece′ numPieces pieces i j) ≡ (i , j)
+    fromPiece-intoPiece : {numPieces : ℕ} {pieces : Table ℕ numPieces} (i : Fin numPieces) (j : Fin (lookup pieces i)) → fromPiece′ (intoPiece′ pieces i j) ≡ (i , j)
     fromPiece-intoPiece {numPieces} {pieces} zero j with reduce+ (lookup pieces zero) (inject+ (sum (tail pieces)) j)
     fromPiece-intoPiece {.(suc _)} {_} zero j | inj₁ (k , p) rewrite inject+-injective p = ≡.refl
     fromPiece-intoPiece {.(suc _)} {pieces} zero j | inj₂ (k , p) = ⊥-elim (raise≢ (sum (tail pieces)) (lookup pieces zero) p)
-    fromPiece-intoPiece {_} {pieces} (suc i) j with reduce+ (lookup pieces zero) (raise (lookup pieces zero) (intoPiece′ _ (tail pieces) i j))
+    fromPiece-intoPiece {_} {pieces} (suc i) j with reduce+ (lookup pieces zero) (raise (lookup pieces zero) (intoPiece′ (tail pieces) i j))
     fromPiece-intoPiece {.(suc _)} {pieces} (suc i) j | inj₁ (k , p) = ⊥-elim (raise≢ (sum (tail pieces)) (lookup pieces zero) (≡.sym p))
     fromPiece-intoPiece {.(suc _)} {pieces} (suc {numPieces} i) j | inj₂ (k , p) = lem′ i j k lem
       where
         open ≡.Reasoning
 
-        lem : fromPiece {pieces = tail pieces} k ≡ (i , j)
+        lem : fromPiece′ {pieces = tail pieces} k ≡ (i , j)
         lem = begin
-          fromPiece k                                  ≡⟨ ≡.cong fromPiece (raise-injective (lookup pieces zero) p) ⟩
-          fromPiece (intoPiece′ _ (tail pieces) i j)   ≡⟨ fromPiece-intoPiece i j ⟩
+          fromPiece′ k                                 ≡⟨ ≡.cong fromPiece′ (raise-injective (lookup pieces zero) p) ⟩
+          fromPiece′ (intoPiece′ (tail pieces) i j)    ≡⟨ fromPiece-intoPiece i j ⟩
           (i , j)                                      ∎
 
-        lem′ : ∀ i (j : Fin (lookup (tail pieces) i)) k → fromPiece k ≡ (i , j) → (suc (proj₁ (fromPiece k)) , proj₂ (fromPiece {pieces = tail pieces} k)) ≡ (suc i , j)
+        lem′ : ∀ i (j : Fin (lookup (tail pieces) i)) k → fromPiece′ k ≡ (i , j) → (suc (proj₁ (fromPiece′ k)) , proj₂ (fromPiece′ {pieces = tail pieces} k)) ≡ (suc i , j)
         lem′ i j k p with OverΣ.from-≡ p
-        lem′ .(proj₁ (fromPiece k)) j k p | ≡.refl , p2 = OverΣ.to-≡ (≡.refl , p2)
+        lem′ .(proj₁ (fromPiece′ k)) j k p | ≡.refl , p2 = OverΣ.to-≡ (≡.refl , p2)
 
-    intoPiece-fromPiece : (numPieces : ℕ) {pieces : Table ℕ numPieces} (k : Fin (sum pieces)) → uncurry (intoPiece′ numPieces pieces) (fromPiece k) ≡ k
+    intoPiece-fromPiece : (numPieces : ℕ) {pieces : Table ℕ numPieces} (k : Fin (sum pieces)) → uncurry (intoPiece′ pieces) (fromPiece′ k) ≡ k
     intoPiece-fromPiece zero ()
     intoPiece-fromPiece (suc numPieces) {pieces} k with reduce+ (lookup pieces zero) k
     intoPiece-fromPiece (suc numPieces) {_} k | inj₁ (k′ , p) = p
@@ -82,7 +82,10 @@ module _ {a} {A : Set a} {size : A → ℕ} (P : Pieces A size) where
 
 
   intoPiece : (i : Fin numPieces) → Fin (sizeAt i) → Fin totalSize
-  intoPiece = intoPiece′ _ _
+  intoPiece = intoPiece′ _
+
+  fromPiece : Fin totalSize → Σ (Fin numPieces) (Fin ∘ sizeAt)
+  fromPiece = fromPiece′
 
   asPiece : Σ (Fin numPieces) (Fin ∘ sizeAt) ↔ Fin totalSize
   asPiece = record
@@ -95,7 +98,7 @@ module _ {a} {A : Set a} {size : A → ℕ} (P : Pieces A size) where
     }
 
 Pieces² : ∀ {a} (A : Set a) (size : A → ℕ) → Set a
-Pieces² A size = Pieces (Pieces A size) (Pieces.totalSize)
+Pieces² A size = Pieces (Pieces A size) Pieces.totalSize
 
 module _ {a} {A : Set a} {size : A → ℕ} (P₁ : Pieces² A size) where
   private
@@ -127,87 +130,132 @@ module _ {a} {A : Set a} {size : A → ℕ} (P₁ : Pieces² A size) where
     ∎
     where open BijReasoning
 
-constPieces : ℕ → ℕ → Pieces ℕ id
-constPieces numPieces pieceSize = record
-  { numPieces = numPieces
-  ; pieces = replicate pieceSize
-  }
+-- constPieces : ℕ → ℕ → Pieces ℕ id
+-- constPieces numPieces pieceSize = record
+--   { numPieces = numPieces
+--   ; pieces = replicate pieceSize
+--   }
 
-{-
+-- repl : ∀ n → ℕ → Table ℕ n
+-- repl _ = replicate
 
-Need an injection
-A ↣ ∃ K
+-- abstract
+--   sum-replicate-* : ∀ m n → sum (repl m n) ≡ m Nat.* n
+--   sum-replicate-* zero _ = ≡.refl
+--   sum-replicate-* (suc m) _ = ≡.cong₂ Nat._+_ ≡.refl (sum-replicate-* m _)
 
-and for each x
+--   sum-replicate-assoc : ∀ a b c → sum (repl (sum (repl a b)) c) ≡ sum (repl a (sum (repl b c)))
+--   sum-replicate-assoc a b c =
+--     begin
+--       sum (repl (sum (repl a b)) c)   ≡⟨ sum-replicate-* (sum (repl a b)) c ⟩
+--       sum (repl a b) Nat.* c          ≡⟨ ≡.cong₂ Nat._*_ (sum-replicate-* a b) ≡.refl ⟩
+--       a Nat.* b Nat.* c               ≡⟨ Nat.*-assoc a b c ⟩
+--       a Nat.* (b Nat.* c)             ≡⟨ ≡.cong₂ Nat._*_ (≡.refl {x = a}) (≡.sym (sum-replicate-* b c)) ⟩
+--       a Nat.* (sum (repl b c))        ≡⟨ ≡.sym (sum-replicate-* a (sum (repl b c))) ⟩
+--       sum (repl a (sum (repl b c)))   ∎
+--     where open ≡.Reasoning
 
-s x : ℕ
-K x ↣ Fin (s x)
+-- import Relation.Binary.HeterogeneousEquality as ≅
+-- open ≅ using (_≅_)
 
--}
+-- lem : ∀ a b c →
+--   c Nat.+ sum (repl (b Nat.+ sum (repl a (suc b))) (suc c)) ≡
+--   c Nat.+ sum (repl b (suc c)) Nat.+ sum (repl a (sum (repl (suc b) (suc c))))
+-- lem a b c =
+--   begin
+--   c Nat.+ sum (repl (b Nat.+ sum (repl a (suc b))) (suc c)) ≡⟨ ≡.cong₂ Nat._+_ ≡.refl lem′ ⟩
+--   c Nat.+ (sum (repl b (suc c)) Nat.+ sum (repl a (sum (repl (suc b) (suc c))))) ≡⟨ ≡.sym (Nat.+-assoc c _ _) ⟩
+--   c Nat.+ sum (repl b (suc c)) Nat.+ sum (repl a (sum (repl (suc b) (suc c)))) ∎
+--   where
+--   open ≡.Reasoning
+--   lem′ : sum (repl (b Nat.+ sum (repl a (suc b))) (suc c)) ≡
+--          sum (repl b (suc c)) Nat.+ sum (repl a (sum (repl (suc b) (suc c))))
+--   lem′ = {!!}
 
--- record PiecewiseLInv {a} {A : Set a}
+-- constPieces-intoPiece-assoc :
+--   ∀ {a b c} i j k →
+--   intoPiece (constPieces (Pieces.totalSize (constPieces a b)) c) (intoPiece (constPieces a b) i j) k ≅
+--   intoPiece (constPieces a (Pieces.totalSize (constPieces b c))) i (intoPiece (constPieces b c) j k)
+-- constPieces-intoPiece-assoc {.suc a} {.suc b} {.suc c} zero zero zero rewrite lem a b c = ≅.refl
+-- constPieces-intoPiece-assoc zero zero (suc k) = {!!}
+-- constPieces-intoPiece-assoc zero (suc j) k = {!!}
+-- constPieces-intoPiece-assoc (suc i) j k = {!!}
 
-record Constructor {a} {b} (A : Set a) (B : Set b) : Set (a ⊔ˡ b) where
-  field
-    build : A → B
-    constructive : ∀ x y → build x ≡ y → ∃ λ z → x ≡ z × build z ≡ y
+-- {-
 
+-- Need an injection
+-- A ↣ ∃ K
 
-module _ {a b} {A : Set a} {B : Set b} {size : A → ℕ} (P : Pieces A size) where
-  open Pieces P
+-- and for each x
 
-  open import Function.Related
+-- s x : ℕ
+-- K x ↣ Fin (s x)
 
+-- -}
 
-  liftConstructors : ∀ {c} (Arg : Fin numPieces → Set c) → (∀ i → Arg i ↞ Fin (sizeAt i)) → B ↞ ∃ Arg → B ↞ Fin totalSize
-  liftConstructors Arg ontoArgAt constructAt =
-      B                                ∼⟨ constructAt ⟩
-      Σ (Fin numPieces) Arg            ∼⟨ Σ-↞ ontoArgAt ⟩
-      Σ (Fin numPieces) (Fin ∘ sizeAt) ↔⟨ asPiece P ⟩
-      Fin totalSize                    ∎
-    where open EquationalReasoning
+-- -- record PiecewiseLInv {a} {A : Set a}
 
-
-  piecewiseRel :
-    ∀ {k}
-    → (f : Σ (Fin numPieces) (Fin ∘ sizeAt) ∼[ k ] B)
-    → Fin totalSize ∼[ k ] B
-  piecewiseRel f =
-      Fin totalSize   ↔⟨ sym (asPiece P) ⟩
-      Σ (Fin numPieces) (Fin ∘ sizeAt) ∼⟨ f ⟩
-      B ∎
-    where open EquationalReasoning
+-- -- record Constructor {a} {b} (A : Set a) (B : Set b) : Set (a ⊔ˡ b) where
+-- --   field
+-- --     build : A → B
+-- --     constructive : ∀ x y → build x ≡ y → ∃ λ z → x ≡ z × build z ≡ y
 
 
-module _ {c₁ ℓ₁ c₂ ℓ₂ c₃ ℓ₃}
-         (A-setoid : Setoid c₁ ℓ₁)
-         (I-setoid : Setoid c₂ ℓ₂)
-         (K-setoid : I.Setoid (Setoid.Carrier I-setoid) c₃ ℓ₃)
-         (A-to-K : LeftInverse A-setoid (Σ.setoid I-setoid K-setoid))
-         (sizeAtI : I-setoid ⟶ ≡.setoid ℕ)
-         (fromK : ∀ i → LeftInverse (K-setoid I.at i) (≡.setoid (Fin (sizeAtI ⟨$⟩ i))))
-         where
+-- -- module _ {a b} {A : Set a} {B : Set b} {size : A → ℕ} (P : Pieces A size) where
+-- --   open Pieces P
 
---   open Setoid A-setoid using () renaming (Carrier to A)
---   open Setoid B-setoid using () renaming (Carrier to B)
+-- --   open import Function.Related
 
---   module _ {size : A → ℕ} (P : Pieces A size) where
---     open Pieces P
 
---   module _ (intoA-size : LeftInverse B-setoid (≡.setoid (Fin numPieces))) where
---            (invAt : ∀ i → LeftInverse A-setoid (≡.setoid (Fin (Pieces.sizeAt P i)))) where
+-- --   liftConstructors : ∀ {c} (Arg : Fin numPieces → Set c) → (∀ i → Arg i ↞ Fin (sizeAt i)) → B ↞ ∃ Arg → B ↞ Fin totalSize
+-- --   liftConstructors Arg ontoArgAt constructAt =
+-- --       B                                ∼⟨ constructAt ⟩
+-- --       Σ (Fin numPieces) Arg            ∼⟨ Σ-↞ ontoArgAt ⟩
+-- --       Σ (Fin numPieces) (Fin ∘ sizeAt) ↔⟨ asPiece P ⟩
+-- --       Fin totalSize                    ∎
+-- --     where open EquationalReasoning
 
---     liftLeftInverses : LeftInverse B-setoid (≡.setoid (Fin totalSize))
---     liftLeftInverses = record
---       { to = record
---         { _⟨$⟩_ = appTo
---         ; cong = {!!}
---         }
---       ; from = ≡.→-to-⟶ {!!}
---       ; left-inverse-of = {!!}
---       }
---       where
---         appTo : B → Fin totalSize
---         appTo y = ?
---           -- let x = LeftInverse.to intoA ⟨$⟩ y
---           -- in {!!}
+
+-- --   piecewiseRel :
+-- --     ∀ {k}
+-- --     → (f : Σ (Fin numPieces) (Fin ∘ sizeAt) ∼[ k ] B)
+-- --     → Fin totalSize ∼[ k ] B
+-- --   piecewiseRel f =
+-- --       Fin totalSize   ↔⟨ sym (asPiece P) ⟩
+-- --       Σ (Fin numPieces) (Fin ∘ sizeAt) ∼⟨ f ⟩
+-- --       B ∎
+-- --     where open EquationalReasoning
+
+
+-- -- module _ {c₁ ℓ₁ c₂ ℓ₂ c₃ ℓ₃}
+-- --          (A-setoid : Setoid c₁ ℓ₁)
+-- --          (I-setoid : Setoid c₂ ℓ₂)
+-- --          (K-setoid : I.Setoid (Setoid.Carrier I-setoid) c₃ ℓ₃)
+-- --          (A-to-K : LeftInverse A-setoid (Σ.setoid I-setoid K-setoid))
+-- --          (sizeAtI : I-setoid ⟶ ≡.setoid ℕ)
+-- --          (fromK : ∀ i → LeftInverse (K-setoid I.at i) (≡.setoid (Fin (sizeAtI ⟨$⟩ i))))
+-- --          where
+
+-- --   open Setoid A-setoid using () renaming (Carrier to A)
+-- --   open Setoid B-setoid using () renaming (Carrier to B)
+
+-- --   module _ {size : A → ℕ} (P : Pieces A size) where
+-- --     open Pieces P
+
+-- --   module _ (intoA-size : LeftInverse B-setoid (≡.setoid (Fin numPieces))) where
+-- --            (invAt : ∀ i → LeftInverse A-setoid (≡.setoid (Fin (Pieces.sizeAt P i)))) where
+
+-- --     liftLeftInverses : LeftInverse B-setoid (≡.setoid (Fin totalSize))
+-- --     liftLeftInverses = record
+-- --       { to = record
+-- --         { _⟨$⟩_ = appTo
+-- --         ; cong = {!!}
+-- --         }
+-- --       ; from = ≡.→-to-⟶ {!!}
+-- --       ; left-inverse-of = {!!}
+-- --       }
+-- --       where
+-- --         appTo : B → Fin totalSize
+-- --         appTo y = ?
+-- --           -- let x = LeftInverse.to intoA ⟨$⟩ y
+-- --           -- in {!!}

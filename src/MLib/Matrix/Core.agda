@@ -5,6 +5,7 @@ open import MLib.Algebra.PropertyCode
 open import MLib.Algebra.PropertyCode.Structures
 
 open import Data.Vec.Relation.Pointwise.Inductive using (Pointwise; []; _∷_)
+open import Relation.Binary using (REL)
 
 open Algebra using (CommutativeMonoid)
 
@@ -20,6 +21,8 @@ module OverBimonoid {c ℓ} (struct : Struct bimonoidCode c ℓ) where
   module _ {m n} where
 
     -- Pointwise equality --
+
+    infix 4 _≈_
 
     _≈_ : Rel (Matrix S m n) _
     A ≈ B = ∀ i j → A i j ≈′ B i j
@@ -41,3 +44,13 @@ module OverBimonoid {c ℓ} (struct : Struct bimonoidCode c ℓ) where
 
     module FunctionProperties = Algebra.FunctionProperties _≈_
 
+  -- Size-heterogeneous pointwise equality
+
+  infix 4 _≃_
+
+  record _≃_ {m n p q} (A : Matrix S m n) (B : Matrix S p q) : Set (c ⊔ˡ ℓ) where
+    field
+      m≡p : m ≡ p
+      n≡q : n ≡ q
+      equal : ∀ i j → A i j ≈′ B (≡.subst Fin m≡p i) (≡.subst Fin n≡q j)
+        -- ≡.subst₂ (Matrix S) m≡p n≡q A ≈ B
