@@ -9,8 +9,8 @@ open import Data.Bool using (if_then_else_)
 
 open import Data.List.All as All using (All; []; _∷_) hiding (module All)
 open import Data.List.Any as Any using (Any; here; there) hiding (module Any)
-import Data.List.Any.Membership as Membership
-import Data.List.Any.Membership.Propositional as PropMembership
+import Data.List.Membership.Setoid as Membership
+import Data.List.Membership.Propositional as PropMembership
 
 import Relation.Binary.Indexed as I
 import Relation.Unary as U using (Decidable)

@@ -4,12 +4,13 @@ open import MLib.Algebra.PropertyCode.Structures
 
 module MLib.Algebra.Operations {c ℓ} (struct : Struct bimonoidCode c ℓ) where
 
-open import Function.Inverse using (Inverse; _↔_)
 open import Function.Equality using (_⟨$⟩_)
 
 open import MLib.Prelude
 open Nat using (zero; suc)
 open Fin using (zero; suc)
+open import Data.Fin.Permutation as Perm using (Permutation; Permutation′; _⟨$⟩ʳ_; _⟨$⟩ˡ_)
+import Data.Fin.Permutation.Components as PC
 open PropertyC
 
 open Struct struct
@@ -36,7 +37,7 @@ module _ {n} where
     using ()
     renaming (_≈_ to _≋_)
 
-open Table using (head; tail; rearrange; fromList; toList; _≗_)
+open Table using (head; tail; rearrange; fromList; toList; _≗_; select)
 
 --------------------------------------------------------------------------------
 --  Operations
@@ -68,12 +69,15 @@ sumₜ-punchIn :
 sumₜ-punchIn f zero = refl
 sumₜ-punchIn {zero} t (suc ())
 sumₜ-punchIn ⦃ props ⦄ {suc n} t (suc i) =
-  begin
-    head t +′ sumₜ (tail t)                                                    ≈⟨ cong + refl (sumₜ-punchIn (tail t) i) ⟩
-    head t +′ (lookup t (suc i) +′ sumₜ (rearrange (Fin.punchIn i) (tail t)))   ≈⟨ sym (from props (associative on +) _ _ _) ⟩
-    (head t +′ lookup t (suc i)) +′ sumₜ (rearrange (Fin.punchIn i) (tail t))   ≈⟨ cong + (from props (commutative on +) _ _) refl ⟩
-    (lookup t (suc i) +′ head t) +′ sumₜ (rearrange (Fin.punchIn i) (tail t))   ≈⟨ from props (associative on +) _ _ _ ⟩
-    lookup t (suc i) +′ (head t +′ sumₜ (rearrange (Fin.punchIn i) (tail t)))   ∎
+  let x = head t
+      y = lookup t (suc i)
+      z = sumₜ (rearrange (Fin.punchIn i) (tail t))
+  in begin
+    x +′ sumₜ (tail t)  ≈⟨ cong + refl (sumₜ-punchIn (tail t) i) ⟩
+    x +′ (y +′ z)       ≈⟨ sym (from props (associative on +) _ _ _) ⟩
+    (x +′ y) +′ z       ≈⟨ cong + (from props (commutative on +) _ _) refl ⟩
+    (y +′ x) +′ z       ≈⟨ from props (associative on +) _ _ _ ⟩
+    y +′ (x +′ z)       ∎
 
 -- '_≈_' is a congruence over 'sumTable n'.
 sumₜ-cong : ∀ {n} {t t′ : Table Carrier n} → t ≋ t′ → sumₜ t ≈ sumₜ t′
@@ -113,8 +117,8 @@ sumₜ-zero ⦃ props ⦄ (suc n) =
     fz +′ ((∑f +′ gz) +′ ∑g)      ≈⟨ cong + refl (cong + (from props (commutative on +) _ _) refl) ⟩
     fz +′ ((gz +′ ∑f) +′ ∑g)      ≈⟨ cong + refl (from props (associative on +) _ _ _) ⟩
     fz +′ (gz +′ (∑f +′ ∑g))      ≈⟨ cong + refl (cong + refl (∑-+′-hom n _ _)) ⟩
-    fz +′ (gz +′ ∑fg)            ≈⟨ sym (from props (associative on +) _ _ _) ⟩
-    fz +′ gz +′ ∑fg              ∎
+    fz +′ (gz +′ ∑fg)             ≈⟨ sym (from props (associative on +) _ _ _) ⟩
+    fz +′ gz +′ ∑fg               ∎
 
 -- The '∑' operator commutes with itself.
 ∑-comm :
@@ -128,35 +132,35 @@ sumₜ-zero ⦃ props ⦄ (suc n) =
     ∑[ j < m ] (f zero j +′ ∑[ i < n ] f (suc i) j)            ∎
 
 module _ ⦃ props : Has (associative on + ∷ commutative on + ∷ []) ⦄ where
-  open Fin using (punchIn; removeIn↔)
+  open Fin using (punchIn)
   -- Any permutation of a table has the same sum as the original.
 
-  sumₜ-permute : ∀ {n} t (π : Fin n ↔ Fin n) → sumₜ t ≈ sumₜ (rearrange (Inverse.to π ⟨$⟩_) t)
+  sumₜ-permute : ∀ {n} t (π : Permutation n) → sumₜ t ≈ sumₜ (rearrange (π ⟨$⟩ʳ_) t)
   sumₜ-permute {zero} t π = refl
   sumₜ-permute {suc n} t π =
     let f = lookup t
     in
     begin
-      sumₜ t                                                                                            ≡⟨⟩
-      f 0i +′ sumₜ (rearrange (punchIn 0i) t)                                                            ≈⟨ cong + refl (sumₜ-permute _ (removeIn↔ (Inverse.from π ⟨$⟩ 0i) π)) ⟩
-      f 0i +′ sumₜ (rearrange (punchIn 0i ∘ (Inverse.to (removeIn↔ (Inverse.from π ⟨$⟩ 0i) π) ⟨$⟩_)) t)  ≡⟨ ≡.cong₂ _+′_ ≡.refl (sumₜ-cong≡ (≡.cong f ∘ ≡.sym ∘ Fin.punchIn-permute′ π 0i)) ⟩
-      f 0i +′ sumₜ (rearrange ((Inverse.to π ⟨$⟩_) ∘ punchIn (Inverse.from π ⟨$⟩ 0i)) t)                 ≡⟨ ≡.cong₂ _+′_ (≡.cong f (≡.sym (Inverse.right-inverse-of π _))) ≡.refl ⟩
-      f _  +′ sumₜ (rearrange ((Inverse.to π ⟨$⟩_) ∘ punchIn (Inverse.from π ⟨$⟩ 0i)) t)                 ≈⟨ sym (sumₜ-punchIn (rearrange (Inverse.to π ⟨$⟩_) t) (Inverse.from π ⟨$⟩ 0i)) ⟩
-      sumₜ (rearrange (Inverse.to π ⟨$⟩_) t)                                                            ∎
+      sumₜ t                                                                             ≡⟨⟩
+      f 0i +′ sumₜ (rearrange (punchIn 0i) t)                                            ≈⟨ cong + refl (sumₜ-permute _ (Perm.removeMember (π ⟨$⟩ˡ 0i) π)) ⟩
+      f 0i +′ sumₜ (rearrange (punchIn 0i ∘ (Perm.removeMember (π ⟨$⟩ˡ 0i) π ⟨$⟩ʳ_)) t)  ≡⟨ ≡.cong₂ _+′_ ≡.refl (sumₜ-cong≡ (≡.cong f ∘ ≡.sym ∘ Perm.punchIn-permute′ π 0i)) ⟩
+      f 0i +′ sumₜ (rearrange ((π ⟨$⟩ʳ_) ∘ punchIn (π ⟨$⟩ˡ 0i)) t)                       ≡⟨ ≡.cong₂ _+′_ (≡.cong f (≡.sym (Perm.inverseʳ π))) ≡.refl ⟩
+      f _  +′ sumₜ (rearrange ((π ⟨$⟩ʳ_) ∘ punchIn (π ⟨$⟩ˡ 0i)) t)                       ≈⟨ sym (sumₜ-punchIn (rearrange (π ⟨$⟩ʳ_) t) (π ⟨$⟩ˡ 0i)) ⟩
+      sumₜ (rearrange (π ⟨$⟩ʳ_) t)                                                       ∎
     where
       0i = zero
-      ππ0 = Inverse.to π ⟨$⟩ (Inverse.from π ⟨$⟩ 0i)
+      ππ0 = π ⟨$⟩ʳ (π ⟨$⟩ˡ 0i)
 
   -- A version of 'sumₜ-permute' allowing heterogeneous sum lengths.
 
-  sumₜ-permute′ : ∀ {m n} t (π : Fin m ↔ Fin n) → sumₜ t ≈ sumₜ (rearrange (Inverse.to π ⟨$⟩_) t)
-  sumₜ-permute′ t π with Fin.↔-≡ π
+  sumₜ-permute′ : ∀ {m n} t (π : Permutation′ m n) → sumₜ t ≈ sumₜ (rearrange (π ⟨$⟩ʳ_) t)
+  sumₜ-permute′ t π with Perm.↔⇒≡ π
   sumₜ-permute′ t π | ≡.refl = sumₜ-permute t π
 
-  ∑-permute : ∀ {n} (f : Fin n → Carrier) (π : Fin n ↔ Fin n) → ∑[ i < n ] f i ≈ ∑[ i < n ] f (Inverse.to π ⟨$⟩ i)
+  ∑-permute : ∀ {n} (f : Fin n → Carrier) (π : Permutation n) → ∑[ i < n ] f i ≈ ∑[ i < n ] f (π ⟨$⟩ʳ i)
   ∑-permute = sumₜ-permute ∘ tabulate
 
-  ∑-permute′ : ∀ {m n} (f : Fin n → Carrier) (π : Fin m ↔ Fin n) → ∑[ i < n ] f i ≈ ∑[ i < m ] f (Inverse.to π ⟨$⟩ i)
+  ∑-permute′ : ∀ {m n} (f : Fin n → Carrier) (π : Permutation′ m n) → ∑[ i < n ] f i ≈ ∑[ i < m ] f (π ⟨$⟩ʳ i)
   ∑-permute′ = sumₜ-permute′ ∘ tabulate
 
 private
@@ -168,18 +172,12 @@ private
 -- If the function takes the same value at 'i' and 'j', then swapping 'i' and
 -- 'j' then selecting 'j' is the same as selecting 'i'.
 
-select-swap : ∀ {n} t (i j : Fin n) → lookup t i ≈ lookup t j → ∀ k → (lookup (Table.select 0′ j t) ∘ Fin.swapFin i j) k ≈ lookup (Table.select 0′ i t) k
-select-swap _ i j e k with k Fin.≟ j
-select-swap _ i j e k | yes p with k Fin.≟ i
-select-swap _ .k .k e k | yes ≡.refl | yes ≡.refl rewrite ⌊i≟i⌋ k = refl
-select-swap _ i .k e k | yes ≡.refl | no ¬q with i Fin.≟ k
-select-swap _ i .k e k | yes ≡.refl | no ¬q | yes p = ⊥-elim (¬q (≡.sym p))
-select-swap _ i .k e k | yes ≡.refl | no ¬q | no ¬p = refl
-select-swap _ i j e k | no ¬p with k Fin.≟ i
-select-swap t i j e k | no ¬p | yes q rewrite ⌊i≟i⌋ j = sym e
-select-swap _ i j e k | no ¬p | no ¬q with k Fin.≟ j
-select-swap _ i j e k | no ¬p | no ¬q | yes p = ⊥-elim (¬p p)
-select-swap _ i j e k | no ¬p | no ¬q | no ¬r = refl
+select-transpose : ∀ {n} t (i j : Fin n) → lookup t i ≈ lookup t j → ∀ k → (lookup (select 0′ j t) ∘ PC.transpose i j) k ≈ lookup (select 0′ i t) k
+select-transpose _ i j e k with k Fin.≟ i
+select-transpose _ i j e k | yes p rewrite ≡.≡-≟-identity Fin._≟_ {j} ≡.refl = sym e
+select-transpose _ i j e k | no ¬p with k Fin.≟ j
+select-transpose _ i j e k | no ¬p | yes q rewrite proj₂ (≡.≢-≟-identity Fin._≟_ (¬p ∘ ≡.trans q ∘ ≡.sym)) = refl
+select-transpose _ i j e k | no ¬p | no ¬q rewrite proj₂ (≡.≢-≟-identity Fin._≟_ ¬q) = refl
 
 -- Summing over a pulse gives you the single value picked out by the pulse.
 
@@ -190,16 +188,16 @@ select-sum {zero} {()} t
 select-sum ⦃ props ⦄ {suc n} {i} t =
   let f = lookup t
       open Table using (select; rearrange; replicate)
-      open Fin using (swapFin)
+      open PC using (transpose)
   in
   begin
-    sumₜ (select 0′ i t)                                                ≈⟨ sumₜ-permute ⦃ narrow props ⦄ (select 0′ i t) (Fin.swapIndices zero i) ⟩
-    sumₜ (rearrange (swapFin zero i) (select 0′ i t))                   ≡⟨ sumₜ-cong≡ (Table.select-const 0′ i t ∘ Fin.swapFin zero i) ⟩
-    sumₜ (rearrange (swapFin zero i) (select 0′ i (replicate (f i))))   ≈⟨ sumₜ-cong (select-swap (replicate (f i)) zero i refl) ⟩
-    sumₜ (select 0′ zero (replicate {suc n} (f i)))                     ≡⟨⟩
-    f i +′ sumₜ (replicate {n} 0′)                                      ≈⟨ cong + refl (sumₜ-zero ⦃ narrow props ⦄ n) ⟩
-    f i +′ 0′                                                           ≈⟨ from props (0# is rightIdentity for +) _ ⟩
-    f i                                                                 ∎
+    sumₜ (select 0′ i t)                                                  ≈⟨ sumₜ-permute ⦃ narrow props ⦄ (select 0′ i t) (Perm.transpose zero i) ⟩
+    sumₜ (rearrange (transpose zero i) (select 0′ i t))                   ≡⟨ sumₜ-cong≡ (Table.select-const 0′ i t ∘ transpose zero i) ⟩
+    sumₜ (rearrange (transpose zero i) (select 0′ i (replicate (f i))))   ≈⟨ sumₜ-cong (select-transpose (replicate (f i)) zero i refl) ⟩
+    sumₜ (select 0′ zero (replicate {suc n} (f i)))                       ≡⟨⟩
+    f i +′ sumₜ (replicate {n} 0′)                                        ≈⟨ cong + refl (sumₜ-zero ⦃ narrow props ⦄ n) ⟩
+    f i +′ 0′                                                             ≈⟨ from props (0# is rightIdentity for +) _ ⟩
+    f i                                                                   ∎
 
 sumₜ-fromList : ∀ xs → sumₜ (Table.fromList xs) ≡ sumₗ xs
 sumₜ-fromList [] = ≡.refl

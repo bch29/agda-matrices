@@ -5,6 +5,7 @@ module MLib.Prelude.Finite.Properties {c ℓ} (finiteSet : FiniteSet c ℓ) wher
 open import MLib.Prelude.FromStdlib
 import MLib.Prelude.Fin as Fin
 open Fin using (Fin)
+import Data.Fin.Permutation as Perm
 
 import Relation.Binary as B
 
@@ -69,15 +70,15 @@ module _ {c ℓ} (icMonoid : IdempotentCommutativeMonoid c ℓ) where
       enumₜ-complete′ : ∀ (func : setoid ⟶ S.setoid) x → (func ⟨$⟩ x) ∙ sumₜ (map (ap func) enumₜ′) ≈′ sumₜ (map (ap func) enumₜ′)
       enumₜ-complete′ func x =
         begin
-          f x ∙ sumₜ (map f enumₜ′)                                         ≈⟨ ∙-cong S.refl (sumₜ-permute (map f enumₜ′) (Fin.swapIndices Fin.zero i)) ⟩
-          f x ∙ sumₜ (permute (Fin.swapIndices Fin.zero i) (map f enumₜ′))  ≡⟨⟩
-          f x ∙ (f (from (to x)) ∙ _)                                       ≈⟨ ∙-cong S.refl (∙-cong (cong func (from-to _)) S.refl) ⟩
-          f x ∙ (f x ∙ _)                                                   ≈⟨ S.sym (S.assoc _ _ _) ⟩
-          (f x ∙ f x) ∙ _                                                   ≈⟨ ∙-cong (S.idem _) S.refl ⟩
-          f x ∙ _                                                           ≈⟨ ∙-cong (cong func (sym (from-to _))) S.refl ⟩
-          f (from (to x)) ∙ _                                               ≡⟨⟩
-          sumₜ (permute (Fin.swapIndices Fin.zero i) (map f enumₜ′))        ≈⟨ S.sym (sumₜ-permute (map f enumₜ′) (Fin.swapIndices Fin.zero i)) ⟩
-          sumₜ (map f enumₜ′)                                               ∎
+          f x ∙ sumₜ (map f enumₜ′)                                        ≈⟨ ∙-cong S.refl (sumₜ-permute (map f enumₜ′) (Perm.transpose Fin.zero i)) ⟩
+          f x ∙ sumₜ (permute (Perm.transpose Fin.zero i) (map f enumₜ′))  ≡⟨⟩
+          f x ∙ (f (from (to x)) ∙ _)                                      ≈⟨ ∙-cong S.refl (∙-cong (cong func (from-to _)) S.refl) ⟩
+          f x ∙ (f x ∙ _)                                                  ≈⟨ S.sym (S.assoc _ _ _) ⟩
+          (f x ∙ f x) ∙ _                                                  ≈⟨ ∙-cong (S.idem _) S.refl ⟩
+          f x ∙ _                                                          ≈⟨ ∙-cong (cong func (sym (from-to _))) S.refl ⟩
+          f (from (to x)) ∙ _                                              ≡⟨⟩
+          sumₜ (permute (Perm.transpose Fin.zero i) (map f enumₜ′))        ≈⟨ S.sym (sumₜ-permute (map f enumₜ′) (Perm.transpose Fin.zero i)) ⟩
+          sumₜ (map f enumₜ′)                                              ∎
         where
           f = ap func
           i = to x
