@@ -17,9 +17,10 @@ import Data.Product.Relation.SigmaPropositional as OverΣ
 open import Relation.Binary.HeterogeneousEquality as ≅ using (_≅_)
 open OverΣ using (OverΣ)
 
-open import Data.Product using (_,′_)
+open import Data.Product as Product using (_,′_)
 
-open Nat using (zero; suc; _*_)
+open Nat using (zero; suc; _*_; _+_; _<_)
+open Fin using (toℕ; fromℕ≤)
 open Table
 
 private
@@ -34,6 +35,7 @@ record Pieces {a} (A : Set a) (size : A → ℕ) : Set a where
   pieceAt = lookup pieces
   sizeAt = size ∘ pieceAt
   totalSize = sum (map size pieces)
+  pieceSizes = tabulate sizeAt
 
 tryLookup : ∀ {n} {a} {A : Set a} → A → Table A n → ℕ → A
 tryLookup {n = zero} z t _ = z
@@ -56,9 +58,6 @@ compare′ (suc m) (suc n) with compare′ m n
 compare′ (suc m) (suc .(suc (m Nat.+ k))) | less .m k = less (suc m) k
 compare′ (suc .(n Nat.+ k)) (suc n) | gte .n k = gte (suc n) k
 
-open Nat using (_+_; _*_; _<_)
-open Fin using (toℕ; fromℕ≤)
-
 module OnNat where
   -- Core lemmas
 
@@ -79,17 +78,17 @@ module OnNat where
 
   -- Core functions
 
-  intoPiece′ : {numPieces : ℕ} (pieces : Table ℕ numPieces) → ℕ × ℕ → ℕ
-  intoPiece′ pieces (zero , j) = j
-  intoPiece′ {zero} pieces (i , j) = 0
-  intoPiece′ {suc numPieces} pieces (suc i , j) = lookup pieces zero + intoPiece′ (tail pieces) (i , j)
+  intoPiece : {numPieces : ℕ} (pieces : Table ℕ numPieces) → ℕ × ℕ → ℕ
+  intoPiece pieces (zero , j) = j
+  intoPiece {zero} pieces (suc i , j) = 0
+  intoPiece {suc numPieces} pieces (suc i , j) = lookup pieces zero + intoPiece (tail pieces) (i , j)
 
-  fromPiece′ : {numPieces : ℕ} (pieces : Table ℕ numPieces) (k : ℕ) → ℕ × ℕ
-  fromPiece′ {zero} pieces k = 0 , 0
-  fromPiece′ {suc n} pieces k with lookup pieces zero | compare′ k (lookup pieces zero)
-  fromPiece′ {suc n} pieces k | .(suc (k + k₁)) | less .k k₁ = 0 , k
-  fromPiece′ {suc n} pieces .(lz + k) | lz | gte .lz k =
-    let i , j = fromPiece′ (tail pieces) k
+  fromPiece : {numPieces : ℕ} (pieces : Table ℕ numPieces) (k : ℕ) → ℕ × ℕ
+  fromPiece {zero} pieces k = 0 , 0
+  fromPiece {suc n} pieces k with lookup pieces zero | compare′ k (lookup pieces zero)
+  fromPiece {suc n} pieces k | .(suc (k + k₁)) | less .k k₁ = 0 , k
+  fromPiece {suc n} pieces .(lz + k) | lz | gte .lz k =
+    let i , j = fromPiece (tail pieces) k
     in (suc i , j)
 
   -- Property lemmas
@@ -103,13 +102,12 @@ module OnNat where
 
   -- Properties
 
-  intoPiece-prop : ∀ {numPieces} (pieces : Table ℕ numPieces) {i j} → i < numPieces → j < tryLookup 0 pieces i → intoPiece′ pieces (i , j) < sum pieces
-  intoPiece-prop {zero} _ {i} () q
-  intoPiece-prop {suc numPieces} _ {zero} p q = Nat.≤-trans q (Nat.m≤m+n _ _)
-  intoPiece-prop {suc numPieces} pieces {suc i} p q = +-<-lem (intoPiece-prop (tail pieces) (Nat.+-cancelˡ-≤ 1 p) q)
+  intoPiece-prop : ∀ {numPieces} (pieces : Table ℕ numPieces) {i j} → i < numPieces → j < tryLookup 0 pieces i → intoPiece pieces (i , j) < sum pieces
+  intoPiece-prop {suc numPieces} _ {zero} (Nat.s≤s p) q = Nat.≤-trans q (Nat.m≤m+n _ _)
+  intoPiece-prop {suc numPieces} pieces {suc i} (Nat.s≤s p) q = +-<-lem (intoPiece-prop (tail pieces) p q)
 
   fromPiece-prop : ∀ {numPieces : ℕ} (pieces : Table ℕ numPieces) {k} → k < sum pieces →
-    let i , j = fromPiece′ pieces k
+    let i , j = fromPiece pieces k
     in Σ (i < numPieces) (λ q → j < lookup pieces (fromℕ≤ {i} q))
   fromPiece-prop {zero} pieces {k} ()
   fromPiece-prop {suc numPieces} pieces {k} p with lookup pieces zero | compare′ k (lookup pieces zero) | ≡.inspect (lookup pieces) zero
@@ -122,14 +120,14 @@ module OnNat where
 
   fromPiece-intoPiece :
     {numPieces : ℕ} (pieces : Table ℕ numPieces) (i j : ℕ) (p : j < tryLookup 0 pieces i) →
-    fromPiece′ pieces (intoPiece′ pieces (i , j)) ≡ (i , j)
+    fromPiece pieces (intoPiece pieces (i , j)) ≡ (i , j)
   fromPiece-intoPiece {zero} _ i j ()
   fromPiece-intoPiece {suc numPieces} pieces i j p
     with lookup pieces zero
-       | intoPiece′ pieces (i , j)
-       | compare′ (intoPiece′ pieces (i , j)) (lookup pieces zero)
+       | intoPiece pieces (i , j)
+       | compare′ (intoPiece pieces (i , j)) (lookup pieces zero)
        | ≡.inspect (lookup pieces) zero
-       | ≡.inspect (intoPiece′ pieces) (i , j)
+       | ≡.inspect (intoPiece pieces) (i , j)
   fromPiece-intoPiece {suc numPieces} pieces zero .ipi p
     | .(suc (ipi + k)) | ipi | less .ipi k | insp₁ | ≡.[ ≡.refl ]
     = ≡.refl
@@ -139,7 +137,7 @@ module OnNat where
   fromPiece-intoPiece {suc numPieces} pieces (suc i) j p
     | .(suc (ipi + k)) | ipi | less .ipi k | ≡.[ eq ] | ≡.[ eq₁ ]
     = let y = lookup pieces zero
-          z = intoPiece′ _ (i , j)
+          z = intoPiece _ (i , j)
       in ⊥-elim (Nat.m≢1+m+n y {z + k} (
          begin
            y                   ≡⟨ eq ⟩
@@ -156,7 +154,7 @@ module OnNat where
     = let q , r = ΣR.≡⇒Pointwise-≡ (fromPiece-intoPiece (tail pieces) i j p)
       in ΣR.Pointwise-≡⇒≡ (≡.cong suc q , r)
 
-  intoPiece-fromPiece : {numPieces : ℕ} (pieces : Table ℕ numPieces) (k : ℕ) (p : k < sum pieces) → intoPiece′ pieces (fromPiece′ pieces k) ≡ k
+  intoPiece-fromPiece : {numPieces : ℕ} (pieces : Table ℕ numPieces) (k : ℕ) (p : k < sum pieces) → intoPiece pieces (fromPiece pieces k) ≡ k
   intoPiece-fromPiece {zero} pieces k ()
   intoPiece-fromPiece {suc numPieces} pieces k p
     with lookup pieces zero
@@ -170,21 +168,19 @@ module OnNat where
         (Nat.+-cancelˡ-≤ (lookup pieces zero) (Nat.≤-trans (Nat.≤-reflexive (Nat.+-suc _ k)) p)))
 
 
-module _ {a} {A : Set a} {size : A → ℕ} (P : Pieces A size) where
-  open Pieces P
-
-  pieceSizes = tabulate (size ∘ pieceAt)
+module Pieces′ {a} {A : Set a} {size : A → ℕ} (P : Pieces A size) where
+  open Pieces P public
 
   intoPieceℕ : ℕ × ℕ → ℕ
-  intoPieceℕ = OnNat.intoPiece′ pieceSizes
+  intoPieceℕ = OnNat.intoPiece pieceSizes
 
   fromPieceℕ : ℕ → ℕ × ℕ
-  fromPieceℕ = OnNat.fromPiece′ pieceSizes
+  fromPieceℕ = OnNat.fromPiece pieceSizes
 
   -- Fin functions
 
-  intoPiece : (i : Fin numPieces) → Fin (sizeAt i) → Fin totalSize
-  intoPiece i j =
+  intoPiece : Σ (Fin numPieces) (Fin ∘ sizeAt) → Fin totalSize
+  intoPiece (i , j) =
     fromℕ≤ {intoPieceℕ (toℕ i , toℕ j)} (
       OnNat.intoPiece-prop pieceSizes
       (Fin.bounded i)
@@ -196,45 +192,36 @@ module _ {a} {A : Set a} {size : A → ℕ} (P : Pieces A size) where
     let p , q = OnNat.fromPiece-prop pieceSizes (Fin.bounded k)
     in fromℕ≤ p , fromℕ≤ q
 
+  intoPiece-intoPieceℕ : (i : Fin numPieces) (j : Fin (sizeAt i)) → toℕ (intoPiece (i , j)) ≡ intoPieceℕ (toℕ i , toℕ j)
+  intoPiece-intoPieceℕ _ _ = Fin.toℕ-fromℕ≤ _
+
+  fromPiece-fromPieceℕ : (k : Fin totalSize) → Product.map toℕ toℕ (fromPiece k) ≡ fromPieceℕ (toℕ k)
+  fromPiece-fromPieceℕ k = ΣR′.≡×≡⇒≡ (Fin.toℕ-fromℕ≤ _ , Fin.toℕ-fromℕ≤ _)
+
+  fromPiece-intoPiece : ∀ {i j} → fromPiece (intoPiece (i , j)) ≡ (i , j)
+  fromPiece-intoPiece {i} {j} = Fin.toℕ-injective₂ (begin
+    Product.map toℕ toℕ (fromPiece (intoPiece (i , j))) ≡⟨ fromPiece-fromPieceℕ _ ⟩
+    fromPieceℕ (toℕ (intoPiece (i , j)))                ≡⟨ ≡.cong fromPieceℕ (intoPiece-intoPieceℕ i j) ⟩
+    fromPieceℕ (intoPieceℕ (toℕ i , toℕ j))            ≡⟨ OnNat.fromPiece-intoPiece pieceSizes (toℕ i) (toℕ j) (Nat.≤-trans (Fin.bounded j) (Nat.≤-reflexive (tryLookup-prop pieceSizes))) ⟩
+    (toℕ i , toℕ j)                                     ∎)
+    where open ≡.Reasoning
+
+  intoPiece-fromPiece : ∀ {k} → intoPiece (fromPiece k) ≡ k
+  intoPiece-fromPiece {k} = Fin.toℕ-injective (
+    begin
+      toℕ (intoPiece (fromPiece k))                     ≡⟨ uncurry intoPiece-intoPieceℕ (fromPiece k) ⟩
+      intoPieceℕ (Product.map toℕ toℕ (fromPiece k))   ≡⟨ ≡.cong intoPieceℕ (fromPiece-fromPieceℕ k) ⟩
+      intoPieceℕ (fromPieceℕ (toℕ k))                  ≡⟨ OnNat.intoPiece-fromPiece pieceSizes (toℕ k) (Fin.bounded k) ⟩
+      toℕ k ∎)
+    where open ≡.Reasoning
+
   asPiece : Σ (Fin numPieces) (Fin ∘ sizeAt) ↔ Fin totalSize
   asPiece = record
-    { to = ≡.→-to-⟶ (uncurry intoPiece)
+    { to = ≡.→-to-⟶ intoPiece
     ; from = ≡.→-to-⟶ fromPiece
     ; inverse-of = record
-      { left-inverse-of = λ {(i , j) →
-        let j<pi : toℕ j < tryLookup 0 pieceSizes (toℕ i)
-            j<pi = Nat.≤-trans (Fin.bounded j) (Nat.≤-reflexive (tryLookup-prop pieceSizes))
-
-            p , q = ΣR′.≡⇒≡×≡ (OnNat.fromPiece-intoPiece pieceSizes (toℕ i) (toℕ j) j<pi)
-
-            p′ : proj₁ (fromPiece (intoPiece i j)) ≡ i
-            p′ = let open ≡.Reasoning in begin
-              fromℕ≤ _               ≡⟨ OnNat.fromℕ≤-cong (≡.trans (≡.cong (proj₁ ∘ OnNat.fromPiece′ pieceSizes) (Fin.toℕ-fromℕ≤ _)) p) ⟩
-              fromℕ≤ (Fin.bounded i) ≡⟨ Fin.fromℕ≤-toℕ i _ ⟩
-              i                       ∎
-
-            q′ : fromℕ≤ (OnNat.fromPiece-prop pieceSizes (Fin.bounded (intoPiece i j)) .proj₂) ≅ j
-            q′ = let open ≅.≅-Reasoning in begin
-              fromℕ≤ _                ≅⟨ OnNat.fromℕ≤-cong′ (≡.cong (lookup pieceSizes) p′) (≡.trans (≡.cong (proj₂ ∘ OnNat.fromPiece′ pieceSizes) (Fin.toℕ-fromℕ≤ _)) q)  ⟩
-              fromℕ≤ (Fin.bounded j)  ≡⟨ Fin.fromℕ≤-toℕ j _ ⟩
-              j ∎
-
-        in ΣR.Pointwise-≡⇒≡ (p′ , q′)
-        }
-      ; right-inverse-of = λ k →
-        let p = OnNat.intoPiece-fromPiece pieceSizes (toℕ k) (Fin.bounded k)
-
-            i , j = OnNat.fromPiece′ pieceSizes (toℕ k)
-            q , r = OnNat.fromPiece-prop pieceSizes (Fin.bounded k)
-
-            lem : (toℕ (fromℕ≤ q) , toℕ (fromℕ≤ r)) ≡ (i , j)
-            lem = ΣR′.≡×≡⇒≡ (Fin.toℕ-fromℕ≤ _ , Fin.toℕ-fromℕ≤ _)
-
-            open ≡.Reasoning
-        in begin
-          fromℕ≤ _ ≡⟨ OnNat.fromℕ≤-cong (≡.trans (≡.cong (OnNat.intoPiece′ pieceSizes) lem) p) ⟩
-          fromℕ≤ (Fin.bounded k) ≡⟨ Fin.fromℕ≤-toℕ k _ ⟩
-          k ∎
+      { left-inverse-of = λ _ → fromPiece-intoPiece
+      ; right-inverse-of = λ _ → intoPiece-fromPiece
       }
     }
 
@@ -243,15 +230,15 @@ Pieces² A size = Pieces (Pieces A size) Pieces.totalSize
 
 module _ {a} {A : Set a} {size : A → ℕ} (P₁ : Pieces² A size) where
   private
-    module P₁ = Pieces P₁
+    module P₁ = Pieces′ P₁
 
   module _ (i : Fin P₁.numPieces) where
     private
       P₂ = P₁.pieceAt i
-      module P₂ = Pieces P₂
+      module P₂ = Pieces′ P₂
 
     intoPiece² : (j : Fin P₂.numPieces) → Fin (size (P₂.pieceAt j)) → Fin P₁.totalSize
-    intoPiece² j = intoPiece P₁ i ∘ intoPiece P₂ j
+    intoPiece² j = curry P₁.intoPiece i ∘ curry P₂.intoPiece j
 
   asPiece² :
     Σ (Fin P₁.numPieces) (λ i →
@@ -262,11 +249,11 @@ module _ {a} {A : Set a} {size : A → ℕ} (P₁ : Pieces² A size) where
   asPiece² =
       Σ (Fin P₁.numPieces) (λ i →
         let P₂ = P₁.pieceAt i
-            module P₂ = Pieces P₂
+            module P₂ = Pieces′ P₂
         in Σ (Fin P₂.numPieces) (Fin ∘ P₂.sizeAt))
-    ↔⟨ Σ-bij (asPiece ∘ P₁.pieceAt) ⟩
+    ↔⟨ Σ-bij (Pieces′.asPiece ∘ P₁.pieceAt) ⟩
       Σ (Fin P₁.numPieces) (Fin ∘ P₁.sizeAt)
-    ↔⟨ asPiece P₁ ⟩
+    ↔⟨ P₁.asPiece ⟩
       Fin P₁.totalSize
     ∎
     where open BijReasoning
@@ -276,48 +263,6 @@ constPieces numPieces pieceSize = record
   { numPieces = numPieces
   ; pieces = replicate pieceSize
   }
-
--- repl : ∀ n → ℕ → Table ℕ n
--- repl _ = replicate
-
--- abstract
---   sum-replicate-* : ∀ m n → sum (repl m n) ≡ m Nat.* n
---   sum-replicate-* zero _ = ≡.refl
---   sum-replicate-* (suc m) _ = ≡.cong₂ Nat._+_ ≡.refl (sum-replicate-* m _)
-
---   sum-replicate-assoc : ∀ a b c → sum (repl (sum (repl a b)) c) ≡ sum (repl a (sum (repl b c)))
---   sum-replicate-assoc a b c =
---     begin
---       sum (repl (sum (repl a b)) c)   ≡⟨ sum-replicate-* (sum (repl a b)) c ⟩
---       sum (repl a b) Nat.* c          ≡⟨ ≡.cong₂ Nat._*_ (sum-replicate-* a b) ≡.refl ⟩
---       a Nat.* b Nat.* c               ≡⟨ Nat.*-assoc a b c ⟩
---       a Nat.* (b Nat.* c)             ≡⟨ ≡.cong₂ Nat._*_ (≡.refl {x = a}) (≡.sym (sum-replicate-* b c)) ⟩
---       a Nat.* (sum (repl b c))        ≡⟨ ≡.sym (sum-replicate-* a (sum (repl b c))) ⟩
---       sum (repl a (sum (repl b c)))   ∎
---     where open ≡.Reasoning
-
--- lem : ∀ a b c →
---   c Nat.+ sum (repl (b Nat.+ sum (repl a (suc b))) (suc c)) ≡
---   c Nat.+ sum (repl b (suc c)) Nat.+ sum (repl a (sum (repl (suc b) (suc c))))
--- lem a b c =
---   begin
---   c Nat.+ sum (repl (b Nat.+ sum (repl a (suc b))) (suc c)) ≡⟨ ≡.cong₂ Nat._+_ ≡.refl lem′ ⟩
---   c Nat.+ (sum (repl b (suc c)) Nat.+ sum (repl a (sum (repl (suc b) (suc c))))) ≡⟨ ≡.sym (Nat.+-assoc c _ _) ⟩
---   c Nat.+ sum (repl b (suc c)) Nat.+ sum (repl a (sum (repl (suc b) (suc c)))) ∎
---   where
---   open ≡.Reasoning
---   lem′ : sum (repl (b Nat.+ sum (repl a (suc b))) (suc c)) ≡
---          sum (repl b (suc c)) Nat.+ sum (repl a (sum (repl (suc b) (suc c))))
---   lem′ = {!!}
-
--- constPieces-intoPiece-assoc :
---   ∀ {a b c} i j k →
---   intoPiece (constPieces (Pieces.totalSize (constPieces a b)) c) (intoPiece (constPieces a b) i j) k ≅
---   intoPiece (constPieces a (Pieces.totalSize (constPieces b c))) i (intoPiece (constPieces b c) j k)
--- constPieces-intoPiece-assoc {.suc a} {.suc b} {.suc c} zero zero zero rewrite lem a b c = ≅.refl
--- constPieces-intoPiece-assoc zero zero (suc k) = {!!}
--- constPieces-intoPiece-assoc zero (suc j) k = {!!}
--- constPieces-intoPiece-assoc (suc i) j k = {!!}
 
 -- {-
 

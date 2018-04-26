@@ -9,7 +9,8 @@ open import Function.LeftInverse using (LeftInverse; _↞_)
 open import Function.Equality using (_⟶_; _⟨$⟩_; cong)
 
 import Relation.Binary.Indexed as I
-import Data.Product.Relation.Pointwise.Dependent as Σ
+open import Data.Product.Relation.Pointwise.Dependent as Σ using (_,_)
+open import Relation.Binary.HeterogeneousEquality as ≅ using (_≅_)
 
 --------------------------------------------------------------------------------
 --  Types
@@ -124,3 +125,11 @@ raise-injective : ∀ {m} n {i j : Fin m} → raise n i ≡ raise n j → i ≡ 
 raise-injective Nat.zero {i} {j} p = p
 raise-injective (Nat.suc n) {i} {j} p = raise-injective n (suc-injective p)
 
+toℕ-injective′ : ∀ {m n} {i : Fin m} {j : Fin n} → toℕ i ≡ toℕ j → m ≡ n → i ≅ j
+toℕ-injective′ {i = i} {j} p ≡.refl = ≅.≡-to-≅ (toℕ-injective p)
+
+toℕ-injective₂ : ∀ {m} {f : Fin m → ℕ} {i i′ : Fin m} {j : Fin (f i)} {j′ : Fin (f i′)} → (toℕ i , toℕ j) ≡ (toℕ i′ , toℕ j′) → _≡_ {A = Σ (Fin m) (Fin ∘ f)} (i , j) (i′ , j′)
+toℕ-injective₂ {f = f} p =
+  let q , r = Σ.≡⇒Pointwise-≡ p
+      q′ = toℕ-injective q
+  in Σ.Pointwise-≡⇒≡ (q′ , toℕ-injective′ (≅.≅-to-≡ r) (≡.cong f q′))
