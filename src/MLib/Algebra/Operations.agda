@@ -4,11 +4,7 @@ open import MLib.Algebra.PropertyCode.Structures
 
 module MLib.Algebra.Operations {c ℓ} (struct : Struct bimonoidCode c ℓ) where
 
-open import Function.Equality using (_⟨$⟩_)
-
 open import MLib.Prelude
-open Nat using (zero; suc)
-open Fin using (zero; suc)
 open import Data.Fin.Permutation as Perm using (Permutation; Permutation′; _⟨$⟩ʳ_; _⟨$⟩ˡ_)
 import Data.Fin.Permutation.Components as PC
 open PropertyC

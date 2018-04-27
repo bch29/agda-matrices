@@ -4,21 +4,18 @@ open import MLib.Prelude.FromStdlib
 open import MLib.Prelude.Fin as Fin using (Fin; zero; suc) hiding (module Fin)
 open import MLib.Prelude.RelProps
 
-open import Function.Inverse using (Inverse; _↔_)
-open import Function.LeftInverse using (LeftInverse; _↞_)
 open import Function.Surjection using (_↠_)
-open import Function.Equality using (_⟶_; _⟨$⟩_; cong)
 open import Function.Related renaming (module EquationalReasoning to BijReasoning)
 
 import Relation.Binary.Indexed as I
 
-open Nat using (zero; suc; _*_; _+_; _<_)
+open Nat using (_*_; _+_; _<_)
 open Fin using (toℕ; fromℕ≤)
 open Table
 
 private
   sum : ∀ {n} → Table ℕ n → ℕ
-  sum = foldr Nat._+_ 0
+  sum = foldr _+_ 0
 
 record Pieces {a} (A : Set a) (size : A → ℕ) : Set a where
   field
@@ -40,16 +37,16 @@ tryLookup-prop _ {i = zero} = ≡.refl
 tryLookup-prop t {i = suc i} = tryLookup-prop (tail t)
 
 data Ordering′ : ℕ → ℕ → Set where
-  less : ∀ m k → Ordering′ m (suc (m Nat.+ k))
-  gte : ∀ m k → Ordering′ (m Nat.+ k) m
+  less : ∀ m k → Ordering′ m (suc (m + k))
+  gte : ∀ m k → Ordering′ (m + k) m
 
 compare′ : ∀ m n → Ordering′ m n
 compare′ zero zero = gte zero zero
 compare′ zero (suc n) = less zero n
 compare′ (suc m) zero = gte zero (suc m)
 compare′ (suc m) (suc n) with compare′ m n
-compare′ (suc m) (suc .(suc (m Nat.+ k))) | less .m k = less (suc m) k
-compare′ (suc .(n Nat.+ k)) (suc n) | gte .n k = gte (suc n) k
+compare′ (suc m) (suc .(suc (m + k))) | less .m k = less (suc m) k
+compare′ (suc .(n + k)) (suc n) | gte .n k = gte (suc n) k
 
 module OnNat where
   -- Core lemmas

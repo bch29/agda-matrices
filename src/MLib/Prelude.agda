@@ -4,4 +4,4 @@ open import MLib.Prelude.FromStdlib public
 
 module Fin where
   open import MLib.Prelude.Fin public
-open Fin using (Fin) hiding (module Fin) public
+open Fin using (Fin; zero; suc) hiding (module Fin) public

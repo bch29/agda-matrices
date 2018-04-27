@@ -12,15 +12,10 @@ open Core.PropKind public
 
 import Relation.Unary as U using (Decidable)
 open import Relation.Binary as B using (Setoid)
-open import Function.LeftInverse using (LeftInverse; _↞_)
-open import Function.Equality as FE using (_⟨$⟩_)
 
-open List using (_∷_; [])
 open import Data.List.All as All using (All; _∷_; []) public
 open import Data.List.Any using (Any; here; there)
 open import Data.Bool using (_∨_)
-open import Data.Vec using ([]; _∷_)
-open import Data.Vec.Relation.Pointwise.Inductive using ([]; _∷_)
 
 open import Category.Applicative
 

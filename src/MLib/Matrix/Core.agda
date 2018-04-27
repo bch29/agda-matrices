@@ -4,7 +4,6 @@ open import MLib.Prelude
 open import MLib.Algebra.PropertyCode
 open import MLib.Algebra.PropertyCode.Structures
 
-open import Data.Vec.Relation.Pointwise.Inductive using (Pointwise; []; _∷_)
 open import Relation.Binary using (REL)
 
 open Algebra using (CommutativeMonoid)

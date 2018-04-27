@@ -38,7 +38,7 @@ open Bool using (Bool; true; false; if_then_else_) hiding (module Bool) public
 module Nat where
   open import Data.Nat public
   open import Data.Nat.Properties public
-open Nat using (ℕ) hiding (module ℕ) public
+open Nat using (ℕ; zero; suc) hiding (module ℕ) public
 
 module Maybe where
   open import Data.Maybe public
@@ -67,6 +67,32 @@ module Table where
   open import Data.Table.Properties public
   open import Data.Table.Relation.Equality public
 open Table using (Table; tabulate; lookup) hiding (module Table) public
+
+module Vec where
+  open import Data.Vec public
+    hiding (module Vec)
+  open import Data.Vec.Properties public
+
+  module Pointwise where
+    open import Data.Vec.Relation.Pointwise.Inductive public
+  open Pointwise public
+    using (Pointwise; []; _∷_) hiding (module Pointwise)
+open Vec public
+  using (Vec; []; _∷_)
+
+module FE where
+  open import Function.Equality hiding (module Π) public
+open FE using (_⟶_; _⟨$⟩_) public
+
+module Inverse where
+  open import Function.Inverse public
+  open Inverse public
+open Inverse using (Inverse; _↔_) hiding (module Inverse) public
+
+module LeftInverse where
+  open import Function.LeftInverse public
+  open LeftInverse public
+open LeftInverse using (LeftInverse; _↞_) hiding (module LeftInverse) public
 
 --------------------------------------------------------------------------------
 --  Combinators

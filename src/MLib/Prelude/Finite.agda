@@ -14,9 +14,8 @@ import Data.List.Membership.Propositional as PropMembership
 
 import Relation.Binary.Indexed as I
 import Relation.Unary as U using (Decidable)
-open import Function.LeftInverse using (LeftInverse; _↞_) renaming (_∘_ to _ⁱ∘_)
-open import Function.Inverse using (Inverse; _↔_)
-open import Function.Equality as FE using (_⟶_; _⇨_; _⟨$⟩_; cong)
+open LeftInverse using () renaming (_∘_ to _ⁱ∘_)
+open FE using (_⇨_; cong)
 open import Function.Related using () renaming (module EquationalReasoning to RelReasoning)
 
 import Data.Product.Relation.SigmaPropositional as OverΣ
@@ -259,7 +258,7 @@ module All′ {a} {A : Set a} where
 --     boolToFin false = Fin.zero
 --     boolToFin true = Fin.suc Fin.zero
 
---     open Nat using (zero; suc; _^_; _+_; _*_)
+--     open Nat using (_^_; _+_; _*_)
 
 --     _ℕ+_ : ∀ {n} (m : ℕ) → Fin n → Fin (m + n)
 --     zero ℕ+ i = i

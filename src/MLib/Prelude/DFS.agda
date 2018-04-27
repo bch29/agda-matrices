@@ -9,7 +9,6 @@ module MLib.Prelude.DFS
 open import MLib.Prelude.Path
 open Bool using (T)
 open import Function.Equivalence using (Equivalence)
-open import Function.Equality using (_⟨$⟩_)
 
 import Data.AVL isStrictTotalOrder as Tree
 open Tree using (Tree)

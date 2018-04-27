@@ -5,8 +5,7 @@ open import MLib.Prelude.FromStdlib
 open import Data.Fin public
 open import Data.Fin.Properties public
 
-open import Function.LeftInverse using (LeftInverse; _↞_)
-open import Function.Equality using (_⟶_; _⟨$⟩_; cong)
+open FE using (cong)
 
 import Relation.Binary.Indexed as I
 
@@ -46,7 +45,7 @@ module _ where
   collect n {A = A} f = foldUpto n [] (λ i xs → maybe (λ x → (i , x) ∷ xs) xs (f i))
 
   collect′ : ∀ n {a} {A : Set a} (f : Fin n → Maybe A) → List A
-  collect′ n {A = A} f = foldUpto n [] (λ i xs → maybe (λ x → x ∷ xs) xs (f i))
+  collect′ n {A = A} f = foldUpto n [] (λ i xs → maybe (λ x → x List.∷ xs) xs (f i))
 
 --------------------------------------------------------------------------------
 --  Theorems

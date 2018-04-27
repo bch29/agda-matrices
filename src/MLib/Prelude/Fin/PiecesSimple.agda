@@ -4,10 +4,7 @@ open import MLib.Prelude.FromStdlib
 open import MLib.Prelude.Fin as Fin using (Fin; zero; suc) hiding (module Fin)
 open import MLib.Prelude.Fin.Pieces
 
-open import Function.Inverse using (_↔_; Inverse)
-open import Function.Equality using (_⟨$⟩_)
-
-open Nat using (zero; suc; _*_; _+_; _<_)
+open Nat using (_*_; _+_; _<_)
 open Fin using (toℕ; fromℕ≤)
 open Table
 

@@ -3,8 +3,7 @@ module MLib.Prelude.DFS.ViaNat where
 open import MLib.Prelude
 open import MLib.Prelude.Finite
 
-open import Function.Equality using (_⟶_; _⇨_; _⟨$⟩_; cong)
-open import Function.LeftInverse using (LeftInverse)
+open FE using (_⇨_; cong)
 
 open import Data.Digit using (fromDigits; toDigits; Digit)
 
@@ -13,8 +12,7 @@ module _ {c p} (A-finiteSet : FiniteSet c p) where
   open A using () renaming (Carrier to A)
 
   open LeftInverse
-  open Nat using (zero; suc; _^_; _+_; _*_)
-  open List using ([]; _∷_)
+  open Nat using (_^_; _+_; _*_)
 
   private
     fromBool : Bool → Digit 2

@@ -1,7 +1,6 @@
 open import MLib.Prelude.FromStdlib
 open import Relation.Binary using (Rel; _Respects₂_; IsStrictTotalOrder)
-open import Function.LeftInverse using (LeftInverse; _↞_)
-open import Function.Equality using (Π)
+open FE using (Π)
 
 module MLib.Prelude.DFS.ViaInjection
   {v v′ e}

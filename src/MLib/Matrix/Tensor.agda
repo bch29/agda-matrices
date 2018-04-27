@@ -7,13 +7,9 @@ open import MLib.Prelude
 open import MLib.Matrix.Core
 open import MLib.Algebra.Operations struct
 
-open Algebra using (CommutativeMonoid)
 open PropertyC
 open Table using (head; tail; rearrange; fromList; toList; _≗_; replicate)
-open Nat using (zero; suc) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
-open Fin using (zero; suc)
-open import Function.Inverse using (_↔_; Inverse)
-open import Function.Equality using (_⟶_; _⟨$⟩_)
+open Nat using () renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 
 open OverBimonoid struct
 open FunctionProperties

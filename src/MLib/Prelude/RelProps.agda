@@ -3,9 +3,7 @@ module MLib.Prelude.RelProps where
 open import MLib.Prelude.FromStdlib
 
 import Relation.Binary.Indexed as I
-open import Function.Equality using (_⟶_; _⟨$⟩_; cong)
-open import Function.Inverse using (Inverse; _↔_)
-open import Function.LeftInverse using (LeftInverse; _↞_)
+open FE using (cong)
 import Data.Product.Relation.SigmaPropositional as OverΣ
 
 Σ-bij : ∀ {a b c} {A : Set a} {B : A → Set b} {C : A → Set c} → (∀ x → B x ↔ C x) → Σ A B ↔ Σ A C

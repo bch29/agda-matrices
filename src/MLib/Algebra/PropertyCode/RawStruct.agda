@@ -10,9 +10,7 @@ open List using (_∷_; [])
 open import Data.List.Any using (Any; here; there)
 open import Data.List.Membership.Propositional using (_∈_)
 
-open import Data.Vec using (Vec; _∷_; [])
 open import Data.Vec.N-ary
-open import Data.Vec.Relation.Pointwise.Inductive using (Pointwise; []; _∷_)
 
 open import Data.Product.Relation.SigmaPropositional as OverΣ using (OverΣ)
 
@@ -20,19 +18,12 @@ open import Data.Bool using (T)
 
 open import Category.Applicative
 
-open import Function.Inverse using (_↔_)
-open import Function.LeftInverse using (_↞_; LeftInverse)
-open import Function.Equality using (_⟨$⟩_)
-
--- import Data.Table as Table hiding (module Table)
-open Table using (Table)
-
 
 module _ {c ℓ} {A : Set c} (_≈_ : Rel A ℓ) where
   open Algebra.FunctionProperties _≈_
 
   Congruentₙ : ∀ {n} → (Vec A n → A) → Set (c ⊔ˡ ℓ)
-  Congruentₙ f = ∀ {xs ys} → Pointwise _≈_ xs ys → f xs ≈ f ys
+  Congruentₙ f = ∀ {xs ys} → Vec.Pointwise _≈_ xs ys → f xs ≈ f ys
 
   fromRefl : Reflexive _≈_ → (f : Vec A 0 → A) → Congruentₙ f
   fromRefl refl f [] = refl
@@ -44,11 +35,11 @@ PointwiseFunc : ∀ {n} {a b ℓ r} {A : Set a} {B : Set b} (_∼_ : A → B →
 PointwiseFunc _∼_ [] [] R = R
 PointwiseFunc _∼_ (x ∷ xs) (y ∷ ys) R = x ∼ y → PointwiseFunc _∼_ xs ys R
 
-appPW : ∀ {n} {a b ℓ r} {A : Set a} {B : Set b} {_∼_ : A → B → Set ℓ} {xs : Vec A n} {ys : Vec B n} {R : Set r} → PointwiseFunc _∼_ xs ys R → Pointwise _∼_ xs ys → R
+appPW : ∀ {n} {a b ℓ r} {A : Set a} {B : Set b} {_∼_ : A → B → Set ℓ} {xs : Vec A n} {ys : Vec B n} {R : Set r} → PointwiseFunc _∼_ xs ys R → Vec.Pointwise _∼_ xs ys → R
 appPW f [] = f
 appPW f (x∼y ∷ pw) = appPW (f x∼y) pw
 
-curryPW : ∀ {n} {a b ℓ r} {A : Set a} {B : Set b} {_∼_ : A → B → Set ℓ} {xs : Vec A n} {ys : Vec B n} {R : Set r} → (Pointwise _∼_ xs ys → R) → PointwiseFunc _∼_ xs ys R
+curryPW : ∀ {n} {a b ℓ r} {A : Set a} {B : Set b} {_∼_ : A → B → Set ℓ} {xs : Vec A n} {ys : Vec B n} {R : Set r} → (Vec.Pointwise _∼_ xs ys → R) → PointwiseFunc _∼_ xs ys R
 curryPW {xs = []} {[]} f = f []
 curryPW {xs = x ∷ xs} {y ∷ ys} f x∼y = curryPW {xs = xs} {ys} λ pw → f (x∼y ∷ pw)
 

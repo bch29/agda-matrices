@@ -9,14 +9,12 @@ import Data.Fin.Permutation as Perm
 
 import Relation.Binary as B
 
-open import Function.LeftInverse using (LeftInverse; _↞_) renaming (_∘_ to _ⁱ∘_)
-open import Function.Inverse using (Inverse; _↔_)
-open import Function.Equality as FE using (_⟶_; _⟨$⟩_; cong)
+open FE using (cong)
+open LeftInverse using () renaming (_∘_ to _ⁱ∘_)
 
 open Algebra using (IdempotentCommutativeMonoid)
 
 open Table hiding (setoid)
-open List using ([]; _∷_)
 
 
 open FiniteSet finiteSet renaming (Carrier to A)

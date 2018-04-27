@@ -9,14 +9,11 @@ open import MLib.Algebra.PropertyCode.RawStruct
 import Relation.Unary as U using (Decidable)
 open import Relation.Binary as B using (Setoid)
 
-open List using (_∷_; [])
 open import Data.List.All as All using (All; _∷_; [])
 open import Data.List.Any using (Any; here; there)
 open import Data.List.Membership.Propositional using (_∈_)
 
-open import Data.Vec using (Vec; _∷_; [])
 open import Data.Vec.N-ary
-open import Data.Vec.Relation.Pointwise.Inductive using (Pointwise; []; _∷_)
 
 open import Data.Product.Relation.SigmaPropositional as OverΣ using (OverΣ)
 
@@ -24,9 +21,8 @@ open import Data.Bool using (T)
 
 open import Category.Applicative
 
-open import Function.Inverse using (_↔_)
-open import Function.LeftInverse using (_↞_; LeftInverse) renaming (_∘_ to _∘ⁱ_)
-open import Function.Equality using (_⟶_; _⇨_; _⟨$⟩_; cong)
+open LeftInverse using () renaming (_∘_ to _∘ⁱ_)
+open FE using (_⇨_; _⟨$⟩_; cong)
 open import Function.Equivalence using (Equivalence)
 
 open Table using (Table)

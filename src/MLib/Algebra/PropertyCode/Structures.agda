@@ -9,14 +9,8 @@ open import MLib.Algebra.PropertyCode public
 
 open import Relation.Binary as B using (Setoid)
 
-open List using (_∷_; [])
 open import Data.List.Any using (Any; here; there)
 open import Data.Bool using (_∨_)
-open Nat using (suc; zero)
-open import Data.Vec.Relation.Pointwise.Inductive using (_∷_; [])
-
-open import Function.LeftInverse using (LeftInverse; _↞_)
-open import Function.Equality using (_⟨$⟩_) renaming (cong to feCong)
 
 open import Category.Applicative
 
@@ -64,7 +58,6 @@ data BimonoidK : ℕ → Set where
 
 module _ where
   open Code
-  open Nat using (suc)
 
   -- TODO: automate proofs like these.
 
