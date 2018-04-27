@@ -1,6 +1,6 @@
 module MLib.Prelude.Fin where
 
-open import MLib.Prelude.FromStdlib hiding (module Σ)
+open import MLib.Prelude.FromStdlib
 
 open import Data.Fin public
 open import Data.Fin.Properties public
@@ -9,8 +9,6 @@ open import Function.LeftInverse using (LeftInverse; _↞_)
 open import Function.Equality using (_⟶_; _⟨$⟩_; cong)
 
 import Relation.Binary.Indexed as I
-open import Data.Product.Relation.Pointwise.Dependent as Σ using (_,_)
-open import Relation.Binary.HeterogeneousEquality as ≅ using (_≅_)
 
 --------------------------------------------------------------------------------
 --  Types

@@ -6,10 +6,6 @@ open import MLib.Prelude.Fin.Pieces
 
 open import Function.Inverse using (_↔_; Inverse)
 open import Function.Equality using (_⟨$⟩_)
--- import Relation.Binary.Indexed as I
--- open import Data.Product.Relation.Pointwise.Dependent as ΣR using (_,_)
--- open import Data.Product.Relation.Pointwise.NonDependent as ΣR′
-open import Relation.Binary.HeterogeneousEquality as ≅ using (_≅_)
 
 open Nat using (zero; suc; _*_; _+_; _<_)
 open Fin using (toℕ; fromℕ≤)
@@ -173,12 +169,113 @@ private
       OnNat₃.intoPiece (a * b) c (OnNat₃.intoPiece a b (toℕ i , toℕ j) , toℕ k)                ∎
     where open ≡.Reasoning
 
-intoPiece-assoc : ∀ {a b c} (i : Fin a) (j : Fin b) (k : Fin c) → intoPiece³′ (i , j , k) ≅ intoPiece³ (i , j , k)
-intoPiece-assoc {a} {b} {c} i j k =
+intoPiece-assoc : ∀ {a b c} (ijk : Fin a × Fin b × Fin c) → intoPiece³′ ijk ≅ intoPiece³ ijk
+intoPiece-assoc {a} {b} {c} (i , j , k) =
   Fin.toℕ-injective′ (begin
-    toℕ (intoPiece³′ (i , j , k)) ≡⟨ intoPiece₃-prop i j k ⟩
-    OnNat₃.intoPiece³′ a b c (toℕ i , toℕ j , toℕ k) ≡⟨ OnNat₃.intoPiece-assocℕ _ _ _ (Fin.bounded i) (Fin.bounded j) (Fin.bounded k) ⟩
-    OnNat₃.intoPiece³ a b c (toℕ i , toℕ j , toℕ k) ≡⟨ ≡.sym (intoPiece₃′-prop i j k) ⟩
-    toℕ (intoPiece³ (i , j , k)) ∎)
+    toℕ (intoPiece³′ (i , j , k))                      ≡⟨ intoPiece₃-prop i j k ⟩
+    OnNat₃.intoPiece³′ a b c (toℕ i , toℕ j , toℕ k)  ≡⟨ OnNat₃.intoPiece-assocℕ _ _ _ (Fin.bounded i) (Fin.bounded j) (Fin.bounded k) ⟩
+    OnNat₃.intoPiece³ a b c (toℕ i , toℕ j , toℕ k)   ≡⟨ ≡.sym (intoPiece₃′-prop i j k) ⟩
+    toℕ (intoPiece³ (i , j , k))                       ∎)
   (≡.sym (Nat.*-assoc a _ _))
   where open ≡.Reasoning
+
+module _ (a b c : ℕ) where
+
+  fromPiece³ : Fin (a * b * c) → Fin a × Fin b × Fin c
+  fromPiece³ x =
+    let ij , k = fromPiece x
+        i , j = fromPiece ij
+    in i , j , k
+
+  fromPiece³′ : Fin (a * (b * c)) → Fin a × Fin b × Fin c
+  fromPiece³′ i =
+    let i₁ , i₂₃ = fromPiece i
+        i₂ , i₃ = fromPiece i₂₃
+    in i₁ , i₂ , i₃
+
+  intoPiece³-fromPiece³ : ∀ i → intoPiece³ (fromPiece³ i) ≡ i
+  intoPiece³-fromPiece³ x =
+    let i , j , k = fromPiece³ x
+
+        open ≡.Reasoning
+
+        lem : intoPiece (i , j) ≡ proj₁ (fromPiece x)
+        lem = begin
+          intoPiece (i , j)                                    ≡⟨⟩
+          intoPiece {a} {b} (fromPiece (proj₁ (fromPiece x)))  ≡⟨ asPiece {a} {b} .Inverse.right-inverse-of _ ⟩
+          proj₁ (fromPiece x)                                  ∎
+
+    in begin
+      intoPiece³ (fromPiece³ x)             ≡⟨⟩
+      intoPiece (intoPiece (i , j) , k)     ≡⟨ ≡.cong intoPiece (Σ.≡×≡⇒≡ (lem , ≡.refl)) ⟩
+      intoPiece {a * b} {c} (fromPiece x)   ≡⟨ asPiece {a * b} {c} .Inverse.right-inverse-of _ ⟩
+      x                                     ∎
+
+  fromPiece³′-intoPiece³′ : ∀ ijk → fromPiece³′ (intoPiece³′ ijk) ≡ ijk
+  fromPiece³′-intoPiece³′ (i , j , k) =
+    let i′ = proj₁ (fromPiece³′ (intoPiece³′ (i , j , k)))
+        j′ = proj₁ (proj₂ (fromPiece³′ (intoPiece³′ (i , j , k))))
+        k′ = proj₂ (proj₂ (fromPiece³′ (intoPiece³′ (i , j , k))))
+
+        p , q = Σ.≡⇒≡×≡ (asPiece .Inverse.left-inverse-of _)
+        q′ = ≡.trans (≡.cong fromPiece q) (asPiece .Inverse.left-inverse-of _)
+
+    in Σ.≡×≡⇒≡ (p , q′)
+
+  fromPiece-assoc : {i : Fin (a * b * c)} {i′ : Fin (a * (b * c))} → i ≅ i′ → fromPiece³ i ≡ fromPiece³′ i′
+  fromPiece-assoc {i} {i′} eq =
+    begin
+      fromPiece³ i                              ≡⟨ ≡.sym (fromPiece³′-intoPiece³′ _) ⟩
+      fromPiece³′ (intoPiece³′ (fromPiece³ i))  ≡⟨ ≡.cong fromPiece³′ lem ⟩
+      fromPiece³′ i′                            ∎
+    where
+    lem : intoPiece³′ (fromPiece³ i) ≡ i′
+    lem = ≅.≅-to-≡ (
+      let open ≅.Reasoning
+      in begin
+        intoPiece³′ (fromPiece³ i)   ≅⟨ intoPiece-assoc (fromPiece³ i) ⟩
+        intoPiece³ (fromPiece³ i)    ≡⟨ intoPiece³-fromPiece³ i ⟩
+        i                            ≅⟨ eq ⟩
+        i′                           ∎)
+
+    open ≡.Reasoning
+
+  fromPiece³-intoPiece³ : ∀ ijk → fromPiece³ (intoPiece³ ijk) ≡ ijk
+  fromPiece³-intoPiece³ ijk =
+    begin
+      fromPiece³  (intoPiece³ ijk)    ≡⟨ fromPiece-assoc (≅.sym (intoPiece-assoc ijk)) ⟩
+      fromPiece³′ (intoPiece³′ ijk)   ≡⟨ fromPiece³′-intoPiece³′ ijk ⟩
+      ijk                             ∎
+    where open ≡.Reasoning
+
+  intoPiece³′-fromPiece³′ : ∀ k → intoPiece³′ (fromPiece³′ k) ≡ k
+  intoPiece³′-fromPiece³′ k =
+    let k′ = ≡.subst Fin (≡.sym (Nat.*-assoc a b c)) k
+        k′≅k = ≅.≡-subst-removable Fin _ k
+    in ≅.≅-to-≡ (begin
+      intoPiece³′ (fromPiece³′ k ) ≡⟨ ≡.cong intoPiece³′ (≡.sym (fromPiece-assoc k′≅k)) ⟩
+      intoPiece³′ (fromPiece³  k′) ≅⟨ intoPiece-assoc (fromPiece³ k′) ⟩
+      intoPiece³  (fromPiece³  k′) ≡⟨ intoPiece³-fromPiece³ k′ ⟩
+      k′                           ≅⟨ k′≅k ⟩
+      k                            ∎)
+    where open ≅.Reasoning
+
+  asPiece³ : (Fin a × Fin b × Fin c) ↔ Fin (a * b * c)
+  asPiece³ = record
+    { to = ≡.→-to-⟶ intoPiece³
+    ; from = ≡.→-to-⟶ fromPiece³
+    ; inverse-of = record
+      { left-inverse-of = fromPiece³-intoPiece³
+      ; right-inverse-of = intoPiece³-fromPiece³
+      }
+    }
+
+  asPiece³′ : (Fin a × Fin b × Fin c) ↔ Fin (a * (b * c))
+  asPiece³′ = record
+    { to = ≡.→-to-⟶ intoPiece³′
+    ; from = ≡.→-to-⟶ fromPiece³′
+    ; inverse-of = record
+      { left-inverse-of = fromPiece³′-intoPiece³′
+      ; right-inverse-of = intoPiece³′-fromPiece³′
+      }
+    }

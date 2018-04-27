@@ -13,8 +13,15 @@ open import Level public
 --  Data
 --------------------------------------------------------------------------------
 
-open import Data.Product public
-  using (Σ; _×_; _,_; proj₁; proj₂; ∃; ∃₂; curry; uncurry)
+module Σ where
+  open import Data.Product public
+    hiding (module Σ)
+  open import Data.Product.Relation.Pointwise.Dependent public
+    using (_,_; Pointwise-≡⇒≡; ≡⇒Pointwise-≡)
+  open import Data.Product.Relation.Pointwise.NonDependent public
+    using (≡×≡⇒≡; ≡⇒≡×≡)
+open Σ using (Σ; _×_; _,_; proj₁; proj₂; ∃; ∃₂; curry; uncurry) public
+
 open import Data.Sum public
   using (_⊎_; inj₁; inj₂)
 
@@ -90,8 +97,13 @@ module EqReasoning {c ℓ} (setoid : Setoid c ℓ) where
 
 module ≡ where
   open import Relation.Binary.PropositionalEquality public
-  module Reasoning = ≡-Reasoning
+    renaming (module ≡-Reasoning to Reasoning)
 open ≡ using (_≡_) public
+
+module ≅ where
+  open import Relation.Binary.HeterogeneousEquality public
+    renaming (module ≅-Reasoning to Reasoning)
+open ≅ using (_≅_) public
 
 --------------------------------------------------------------------------------
 --  Algebra

@@ -52,5 +52,4 @@ module OverBimonoid {c ℓ} (struct : Struct bimonoidCode c ℓ) where
     field
       m≡p : m ≡ p
       n≡q : n ≡ q
-      equal : ∀ i j → A i j ≈′ B (≡.subst Fin m≡p i) (≡.subst Fin n≡q j)
-        -- ≡.subst₂ (Matrix S) m≡p n≡q A ≈ B
+      equal : ∀ {i i′ j j′} → i ≅ i′ → j ≅ j′ → A i j ≈′ B i′ j′
