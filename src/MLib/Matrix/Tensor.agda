@@ -7,25 +7,21 @@ open import MLib.Prelude
 open import MLib.Matrix.Core
 open import MLib.Algebra.Operations struct
 
-open PropertyC
 open Table using (head; tail; rearrange; fromList; toList; _≗_; replicate)
 open Nat using () renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 
 open OverBimonoid struct
 open FunctionProperties
 
-open import MLib.Prelude.Fin.PiecesSimple
+open import MLib.Fin.PiecesSimple
 
-module Defn {m n p q : ℕ} where
-  -- Tensor product
+-- Tensor product
 
-  _⊠_ : Matrix S m n → Matrix S p q → Matrix S (m Nat.* p) (n Nat.* q)
-  (A ⊠ B) i j =
-    let i₁ , i₂ = fromPiece i
-        j₁ , j₂ = fromPiece j
-    in A i₁ j₁ *′ B i₂ j₂
-
-open Defn using (_⊠_) public
+_⊠_ : ∀ {m n p q} → Matrix S m n → Matrix S p q → Matrix S (m *ℕ p) (n *ℕ q)
+(A ⊠ B) i j =
+  let i₁ , i₂ = fromPiece i
+      j₁ , j₂ = fromPiece j
+  in A i₁ j₁ *′ B i₂ j₂
 
 module _ ⦃ props : Has (associative on * ∷ []) ⦄ {m n p q r s} where
   open _≃_

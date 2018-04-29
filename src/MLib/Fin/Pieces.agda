@@ -1,7 +1,6 @@
-module MLib.Prelude.Fin.Pieces where
+module MLib.Fin.Pieces where
 
-open import MLib.Prelude.FromStdlib
-open import MLib.Prelude.Fin as Fin using (Fin; zero; suc) hiding (module Fin)
+open import MLib.Prelude
 open import MLib.Prelude.RelProps
 
 open import Function.Surjection using (_↠_)

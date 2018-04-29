@@ -1,11 +1,8 @@
-module MLib.Prelude.Finite where
+module MLib.Finite where
 
-open import MLib.Prelude.FromStdlib
-import MLib.Prelude.Fin as Fin
-import MLib.Prelude.Fin.Pieces as P
+open import MLib.Prelude
+import MLib.Fin.Pieces as P
 open import MLib.Prelude.RelProps
-open Fin using (Fin)
-open import Data.Bool using (if_then_else_)
 
 open import Data.List.All as All using (All; []; _∷_) hiding (module All)
 open import Data.List.Any as Any using (Any; here; there) hiding (module Any)

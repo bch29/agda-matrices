@@ -1,7 +1,7 @@
 module MLib.Algebra.PropertyCode.Structures where
 
 open import MLib.Prelude
-open import MLib.Prelude.Finite
+open import MLib.Finite
 
 open import MLib.Algebra.PropertyCode.RawStruct public
 open import MLib.Algebra.PropertyCode.Core public
@@ -107,8 +107,6 @@ module _ where
 --------------------------------------------------------------------------------
 --  Some named property combinations
 --------------------------------------------------------------------------------
-
-open PropertyC using (_on_; _is_for_; _⟨_⟩ₚ_)
 
 isSemigroup : Properties magmaCode
 isSemigroup = fromList (associative on ∙ ∷ [])

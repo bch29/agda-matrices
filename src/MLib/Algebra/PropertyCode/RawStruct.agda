@@ -1,12 +1,11 @@
 module MLib.Algebra.PropertyCode.RawStruct where
 
 open import MLib.Prelude
-open import MLib.Prelude.Fin.Pieces
-open import MLib.Prelude.Finite
+open import MLib.Fin.Pieces
+open import MLib.Finite
 
 open import Relation.Binary as B using (Setoid)
 
-open List using (_∷_; [])
 open import Data.List.Any using (Any; here; there)
 open import Data.List.Membership.Propositional using (_∈_)
 

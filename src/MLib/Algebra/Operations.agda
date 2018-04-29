@@ -7,7 +7,6 @@ module MLib.Algebra.Operations {c ℓ} (struct : Struct bimonoidCode c ℓ) wher
 open import MLib.Prelude
 open import Data.Fin.Permutation as Perm using (Permutation; Permutation′; _⟨$⟩ʳ_; _⟨$⟩ˡ_)
 import Data.Fin.Permutation.Components as PC
-open PropertyC
 
 open Struct struct
 open EqReasoning setoid

@@ -6,8 +6,6 @@ module MLib.Matrix.Plus {c ℓ} (struct : Struct bimonoidCode c ℓ) where
 open import MLib.Prelude
 open import MLib.Matrix.Core
 
-open Algebra using (CommutativeMonoid)
-open PropertyC
 open OverBimonoid struct
 open FunctionProperties
 

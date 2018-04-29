@@ -1,14 +1,15 @@
 module MLib.Algebra.PropertyCode where
 
 open import MLib.Prelude
-open import MLib.Prelude.Finite
+open import MLib.Finite
 
 open import MLib.Algebra.PropertyCode.RawStruct public
 open import MLib.Algebra.PropertyCode.Core as Core public
-  using (Property; Properties; Code; IsSubcode; _∈ₚ_; _⇒ₚ_; ⟦_⟧P; module PropertyC)
+  using (Property; Properties; Code; IsSubcode; _∈ₚ_; _⇒ₚ_; ⟦_⟧P)
   renaming (⇒ₚ-narrow to narrow)
 
 open Core.PropKind public
+open Core.PropertyC using (_on_; _is_for_; _⟨_⟩ₚ_) public
 
 import Relation.Unary as U using (Decidable)
 open import Relation.Binary as B using (Setoid)

@@ -4,14 +4,15 @@ open import MLib.Prelude
 open import MLib.Algebra.PropertyCode
 open import MLib.Algebra.PropertyCode.Structures
 
-open import Relation.Binary using (REL)
-
-open Algebra using (CommutativeMonoid)
-
-open PropertyC
-
 Matrix : ∀ {a} → Set a → ℕ → ℕ → Set a
 Matrix A m n = Fin m → Fin n → A
+
+module _ {a} (A : Set a) where
+  row : ∀ {m n} → Fin m → Matrix A m n → Table A n
+  row i M .lookup j = M i j
+
+  col : ∀ {m n} → Fin n → Matrix A m n → Table A m
+  col j M .lookup i = M i j
 
 module OverBimonoid {c ℓ} (struct : Struct bimonoidCode c ℓ) where
   module S = Struct struct renaming (Carrier to S; _≈_ to _≈′_)

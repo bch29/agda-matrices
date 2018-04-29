@@ -1,10 +1,8 @@
-open import MLib.Prelude.Finite
+open import MLib.Finite
 
-module MLib.Prelude.Finite.Properties {c ℓ} (finiteSet : FiniteSet c ℓ) where
+module MLib.Finite.Properties {c ℓ} (finiteSet : FiniteSet c ℓ) where
 
-open import MLib.Prelude.FromStdlib
-import MLib.Prelude.Fin as Fin
-open Fin using (Fin)
+open import MLib.Prelude
 import Data.Fin.Permutation as Perm
 
 import Relation.Binary as B
@@ -13,9 +11,7 @@ open FE using (cong)
 open LeftInverse using () renaming (_∘_ to _ⁱ∘_)
 
 open Algebra using (IdempotentCommutativeMonoid)
-
 open Table hiding (setoid)
-
 
 open FiniteSet finiteSet renaming (Carrier to A)
 

@@ -1,8 +1,7 @@
-module MLib.Prelude.Fin.PiecesSimple where
+module MLib.Fin.PiecesSimple where
 
-open import MLib.Prelude.FromStdlib
-open import MLib.Prelude.Fin as Fin using (Fin; zero; suc) hiding (module Fin)
-open import MLib.Prelude.Fin.Pieces
+open import MLib.Prelude
+open import MLib.Fin.Pieces
 
 open Nat using (_*_; _+_; _<_)
 open Fin using (toℕ; fromℕ≤)

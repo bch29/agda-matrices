@@ -1,15 +1,15 @@
 module MLib.Algebra.PropertyCode.Core where
 
 open import MLib.Prelude
-open import MLib.Prelude.Fin.Pieces
-open import MLib.Prelude.Finite
-import MLib.Prelude.Finite.Properties as FiniteProps
+open import MLib.Fin.Pieces
+open import MLib.Finite
+import MLib.Finite.Properties as FiniteProps
 open import MLib.Algebra.PropertyCode.RawStruct
 
 import Relation.Unary as U using (Decidable)
 open import Relation.Binary as B using (Setoid)
 
-open import Data.List.All as All using (All; _∷_; [])
+open List.All using (All; _∷_; [])
 open import Data.List.Any using (Any; here; there)
 open import Data.List.Membership.Propositional using (_∈_)
 
@@ -22,7 +22,7 @@ open import Data.Bool using (T)
 open import Category.Applicative
 
 open LeftInverse using () renaming (_∘_ to _∘ⁱ_)
-open FE using (_⇨_; _⟨$⟩_; cong)
+open FE using (_⇨_; cong)
 open import Function.Equivalence using (Equivalence)
 
 open Table using (Table)
@@ -248,7 +248,7 @@ mapProperty :
   → (∀ {n} → K′ n → K n)
   → Property K′
   → Property K
-mapProperty f (π , κs) = π , All.map f κs
+mapProperty f (π , κs) = π , List.All.map f κs
 
 record Properties {k} (code : Code k) : Set k where
   constructor properties

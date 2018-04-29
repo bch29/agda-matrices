@@ -7,8 +7,6 @@ open import MLib.Prelude
 open import MLib.Matrix.Core
 open import MLib.Algebra.Operations struct
 
-open Algebra using (CommutativeMonoid)
-open PropertyC
 open OverBimonoid struct
 open FunctionProperties
 open Table using (head; tail; rearrange; fromList; toList; _≗_)
