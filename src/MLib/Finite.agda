@@ -163,7 +163,7 @@ module _ {c} {A : Set c} {N} (isFiniteSet : IsFiniteSet A N) where
         ; pieces = F.enumₜ
         }
 
-      open P.Pieces′ pieces hiding (pieces)
+      open P.Pieces pieces hiding (pieces)
 
     Σ-isFiniteSetoid : IsFiniteSetoid (OverΣ.setoid PW.setoid) totalSize
     Σ-isFiniteSetoid = record
@@ -358,14 +358,14 @@ module _ {a p ℓ} {A : Set a} (finiteAt : A → FiniteSet p ℓ) where
       prodIsSum (Nat.suc m) n = ≡.cong₂ Nat._+_ (≡.refl {x = n}) (prodIsSum m n)
 
       splitProd : ∀ {m n} → Fin (m Nat.* n) → Fin m × Fin n
-      splitProd {m} {n} ij rewrite prodIsSum m n = Inverse.from (P.Pieces′.asPiece (P.constPieces m n)) ⟨$⟩ ij
+      splitProd {m} {n} ij rewrite prodIsSum m n = Inverse.from (P.Pieces.asPiece (P.constPieces m n)) ⟨$⟩ ij
 
       joinProd : ∀ {m n} → Fin m × Fin n → Fin (m Nat.* n)
-      joinProd {m} {n} ij with Inverse.to (P.Pieces′.asPiece (P.constPieces m n )) ⟨$⟩ ij
+      joinProd {m} {n} ij with Inverse.to (P.Pieces.asPiece (P.constPieces m n )) ⟨$⟩ ij
       joinProd {m} {n} ij | f rewrite prodIsSum m n = f
 
       splitProd-joinProd : ∀ {m n} (ij : Fin m × Fin n) → splitProd (joinProd ij) ≡ ij
-      splitProd-joinProd {m} {n} ij rewrite prodIsSum m n = Inverse.left-inverse-of (P.Pieces′.asPiece (P.constPieces m n)) ij
+      splitProd-joinProd {m} {n} ij rewrite prodIsSum m n = Inverse.left-inverse-of (P.Pieces.asPiece (P.constPieces m n)) ij
 
       to : ∀ {xs} → All P xs → Fin (finiteAllSize xs)
       to [] = Fin.zero

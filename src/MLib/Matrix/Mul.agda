@@ -16,9 +16,27 @@ open Table using (head; tail; rearrange; fromList; toList; _≗_)
 1● i j | yes _ = 1′
 1● i j | no  _ = 0′
 
-module _ {m n o} where
-  _⊗_ : Matrix S m n → Matrix S n o → Matrix S m o
-  (A ⊗ B) i k = ∑[ j < n ] (A i j *′ B j k)
+infixl 6 _⊗_
+
+_⊗_ : ∀ {m n o} → Matrix S m n → Matrix S n o → Matrix S m o
+_⊗_ {n = n} A B i k = ∑[ j < n ] (A i j *′ B j k)
+
+open _≃_
+
+1●-cong-≃ : ∀ {m n} → m ≡ n → 1● {m} ≃ 1● {n}
+1●-cong-≃ ≡.refl = ≃-refl
+
+⊗-cong-≃ : ∀ {m n o m′ n′ o′} (A : Matrix S m n) (B : Matrix S n o) (A′ : Matrix S m′ n′) (B′ : Matrix S n′ o′) → A ≃ A′ → B ≃ B′ → (A ⊗ B) ≃ (A′ ⊗ B′)
+⊗-cong-≃ A B A′ B′ p q .m≡p = p .m≡p
+⊗-cong-≃ A B A′ B′ p q .n≡q = q .n≡q
+⊗-cong-≃ {n = n} {n′ = n′} A B A′ B′ p q .equal {i} {i′} {k} {k′} i≅i′ k≅k′ =
+  begin
+    (A  ⊗ B ) i k                       ≡⟨⟩
+    ∑[ j  < n  ] (A  i  j  *′ B  j  k)  ≈⟨ sumₜ-cong′ {n} {n′} (p .n≡q , λ _ _ j≅j′ → cong * (p .equal i≅i′ j≅j′) (q .equal j≅j′ k≅k′)) ⟩
+    ∑[ j′ < n′ ] (A′ i′ j′ *′ B′ j′ k′) ≡⟨⟩
+    (A′ ⊗ B′) i′ k′                     ∎
+  where
+    open EqReasoning S.setoid
 
 ⊗-assoc :
   ⦃ props : Has ( * ⟨ distributesOverˡ ⟩ₚ +

@@ -32,6 +32,9 @@ module _ {n} where
     using ()
     renaming (_≈_ to _≋_)
 
+_≋′_ : ∀ {m n} → Table Carrier m → Table Carrier n → Set ℓ
+_≋′_ = Table.Pointwise′ _≈_
+
 open Table using (head; tail; rearrange; fromList; toList; _≗_; select)
 
 --------------------------------------------------------------------------------
@@ -78,6 +81,10 @@ sumₜ-punchIn ⦃ props ⦄ {suc n} t (suc i) =
 sumₜ-cong : ∀ {n} {t t′ : Table Carrier n} → t ≋ t′ → sumₜ t ≈ sumₜ t′
 sumₜ-cong {zero} p = refl
 sumₜ-cong {suc n} p = cong + (p _) (sumₜ-cong (p ∘ suc))
+
+-- A version of 'sumₜ-cong' with heterogeneous table sizes
+sumₜ-cong′ : ∀ {m n} {t : Table Carrier m} {t′ : Table Carrier n} → t ≋′ t′ → sumₜ t ≈ sumₜ t′
+sumₜ-cong′ {m} (≡.refl , q) = sumₜ-cong λ i → q i i ≅.refl
 
 -- '_≡_' is a congruence over 'sum n'.
 sumₜ-cong≡ : ∀ {n} {t t′ : Table Carrier n} → t ≗ t′ → sumₜ t ≡ sumₜ t′
@@ -130,32 +137,32 @@ module _ ⦃ props : Has (associative on + ∷ commutative on + ∷ []) ⦄ wher
   open Fin using (punchIn)
   -- Any permutation of a table has the same sum as the original.
 
-  sumₜ-permute : ∀ {n} t (π : Permutation n) → sumₜ t ≈ sumₜ (rearrange (π ⟨$⟩ʳ_) t)
+  sumₜ-permute : ∀ {n} t (π : Permutation′ n) → sumₜ t ≈ sumₜ (rearrange (π ⟨$⟩ʳ_) t)
   sumₜ-permute {zero} t π = refl
   sumₜ-permute {suc n} t π =
     let f = lookup t
     in
     begin
-      sumₜ t                                                                             ≡⟨⟩
-      f 0i +′ sumₜ (rearrange (punchIn 0i) t)                                            ≈⟨ cong + refl (sumₜ-permute _ (Perm.removeMember (π ⟨$⟩ˡ 0i) π)) ⟩
-      f 0i +′ sumₜ (rearrange (punchIn 0i ∘ (Perm.removeMember (π ⟨$⟩ˡ 0i) π ⟨$⟩ʳ_)) t)  ≡⟨ ≡.cong₂ _+′_ ≡.refl (sumₜ-cong≡ (≡.cong f ∘ ≡.sym ∘ Perm.punchIn-permute′ π 0i)) ⟩
-      f 0i +′ sumₜ (rearrange ((π ⟨$⟩ʳ_) ∘ punchIn (π ⟨$⟩ˡ 0i)) t)                       ≡⟨ ≡.cong₂ _+′_ (≡.cong f (≡.sym (Perm.inverseʳ π))) ≡.refl ⟩
-      f _  +′ sumₜ (rearrange ((π ⟨$⟩ʳ_) ∘ punchIn (π ⟨$⟩ˡ 0i)) t)                       ≈⟨ sym (sumₜ-punchIn (rearrange (π ⟨$⟩ʳ_) t) (π ⟨$⟩ˡ 0i)) ⟩
-      sumₜ (rearrange (π ⟨$⟩ʳ_) t)                                                       ∎
+      sumₜ t                                                                       ≡⟨⟩
+      f 0i +′ sumₜ (rearrange (punchIn 0i) t)                                      ≈⟨ cong + refl (sumₜ-permute _ (Perm.remove (π ⟨$⟩ˡ 0i) π)) ⟩
+      f 0i +′ sumₜ (rearrange (punchIn 0i ∘ (Perm.remove (π ⟨$⟩ˡ 0i) π ⟨$⟩ʳ_)) t)  ≡⟨ ≡.cong₂ _+′_ ≡.refl (sumₜ-cong≡ (≡.cong f ∘ ≡.sym ∘ Perm.punchIn-permute′ π 0i)) ⟩
+      f 0i +′ sumₜ (rearrange ((π ⟨$⟩ʳ_) ∘ punchIn (π ⟨$⟩ˡ 0i)) t)                 ≡⟨ ≡.cong₂ _+′_ (≡.cong f (≡.sym (Perm.inverseʳ π))) ≡.refl ⟩
+      f _  +′ sumₜ (rearrange ((π ⟨$⟩ʳ_) ∘ punchIn (π ⟨$⟩ˡ 0i)) t)                 ≈⟨ sym (sumₜ-punchIn (rearrange (π ⟨$⟩ʳ_) t) (π ⟨$⟩ˡ 0i)) ⟩
+      sumₜ (rearrange (π ⟨$⟩ʳ_) t)                                                 ∎
     where
       0i = zero
       ππ0 = π ⟨$⟩ʳ (π ⟨$⟩ˡ 0i)
 
   -- A version of 'sumₜ-permute' allowing heterogeneous sum lengths.
 
-  sumₜ-permute′ : ∀ {m n} t (π : Permutation′ m n) → sumₜ t ≈ sumₜ (rearrange (π ⟨$⟩ʳ_) t)
+  sumₜ-permute′ : ∀ {m n} t (π : Permutation m n) → sumₜ t ≈ sumₜ (rearrange (π ⟨$⟩ʳ_) t)
   sumₜ-permute′ t π with Perm.↔⇒≡ π
   sumₜ-permute′ t π | ≡.refl = sumₜ-permute t π
 
-  ∑-permute : ∀ {n} (f : Fin n → Carrier) (π : Permutation n) → ∑[ i < n ] f i ≈ ∑[ i < n ] f (π ⟨$⟩ʳ i)
+  ∑-permute : ∀ {n} (f : Fin n → Carrier) (π : Permutation′ n) → ∑[ i < n ] f i ≈ ∑[ i < n ] f (π ⟨$⟩ʳ i)
   ∑-permute = sumₜ-permute ∘ tabulate
 
-  ∑-permute′ : ∀ {m n} (f : Fin n → Carrier) (π : Permutation′ m n) → ∑[ i < n ] f i ≈ ∑[ i < m ] f (π ⟨$⟩ʳ i)
+  ∑-permute′ : ∀ {m n} (f : Fin n → Carrier) (π : Permutation m n) → ∑[ i < n ] f i ≈ ∑[ i < m ] f (π ⟨$⟩ʳ i)
   ∑-permute′ = sumₜ-permute′ ∘ tabulate
 
 private
