@@ -5,9 +5,10 @@ module MLib.Matrix.Mul {c ℓ} (struct : Struct bimonoidCode c ℓ) where
 
 open import MLib.Prelude
 open import MLib.Matrix.Core
+open import MLib.Matrix.Equality struct
+open import MLib.Matrix.Plus struct
 open import MLib.Algebra.Operations struct
 
-open OverBimonoid struct
 open FunctionProperties
 open Table using (head; tail; rearrange; fromList; toList; _≗_)
 
@@ -16,10 +17,13 @@ open Table using (head; tail; rearrange; fromList; toList; _≗_)
 1● i j | yes _ = 1′
 1● i j | no  _ = 0′
 
-infixl 6 _⊗_
+infixl 7 _⊗_
 
 _⊗_ : ∀ {m n o} → Matrix S m n → Matrix S n o → Matrix S m o
 _⊗_ {n = n} A B i k = ∑[ j < n ] (A i j *′ B j k)
+
+⊗-cong : ∀ {m n o} {A A′ : Matrix S m n} {B B′ : Matrix S n o} → A ≈ A′ → B ≈ B′ → (A ⊗ B) ≈ (A′ ⊗ B′)
+⊗-cong A≈A′ B≈B′ i k = sumₜ-cong (λ j → cong * (A≈A′ i j) (B≈B′ j k))
 
 open _≃_
 
@@ -124,4 +128,15 @@ open _≃_
     ∑[ j < n ] (A i j *′ 1● j k)                ≈⟨ sumₜ-cong (1-selectʳ ⦃ narrow props ⦄ k _) ⟩
     sumₜ (Table.select 0′ k (tabulate (A i)))   ≈⟨ select-sum ⦃ narrow props ⦄ {n} _ ⟩
     A i k                                       ∎
+  where open EqReasoning S.setoid
+
+⊗-distributesOverˡ-⊕ :
+  ⦃ props : Has (* ⟨ distributesOverˡ ⟩ₚ + ∷ 0# is leftIdentity for + ∷ associative on + ∷ commutative on + ∷ []) ⦄ →
+  ∀ {m n o} (M : Matrix S m n) (A B : Matrix S n o) →
+  M ⊗ (A ⊕ B) ≈ (M ⊗ A) ⊕ (M ⊗ B)
+⊗-distributesOverˡ-⊕ ⦃ props ⦄ {n = n} M A B i k =
+  begin
+    ∑[ j < n ] (M i j *′ (A j k +′ B j k))                      ≈⟨ sumₜ-cong (λ j → from props (* ⟨ distributesOverˡ ⟩ₚ +) (M i j) (A j k) (B j k)) ⟩
+    ∑[ j < n ] (M i j *′ A j k +′ M i j *′ B j k)               ≈⟨ S.sym (∑-+′-hom ⦃ narrow props ⦄ n (λ j → M i j *′ A j k) (λ j → M i j *′ B j k)) ⟩
+    ∑[ j < n ] (M i j *′ A j k) +′ ∑[ j < n ] (M i j *′ B j k)  ∎
   where open EqReasoning S.setoid

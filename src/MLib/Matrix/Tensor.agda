@@ -5,13 +5,13 @@ module MLib.Matrix.Tensor {c ℓ} (struct : Struct bimonoidCode c ℓ) where
 
 open import MLib.Prelude
 open import MLib.Matrix.Core
+open import MLib.Matrix.Equality struct
 open import MLib.Matrix.Mul struct
 open import MLib.Algebra.Operations struct
 
 open Table using (head; tail; rearrange; fromList; toList; _≗_; replicate)
 open Nat using () renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 
-open OverBimonoid struct
 open FunctionProperties
 
 open import MLib.Fin.Pieces.Simple

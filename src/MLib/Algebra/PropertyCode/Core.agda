@@ -231,6 +231,11 @@ record Code k : Set (sucˡ k) where
     open FiniteSet finiteSet public
     open FiniteProps finiteSet public
 
+    ≈⇒≡ : ∀ {π π′} → π ≈ π′ → π ≡ π′
+    ≈⇒≡ {π , κ} {.π , κ′} (≡.refl , snd) with All′.PW-≡ _ snd
+    ≈⇒≡ {π , κ} {.π , .κ} (≡.refl , snd) | ≡.refl = ≡.refl
+
+
 record IsSubcode {k k′} (sub : Code k) (sup : Code k′) : Set (k ⊔ˡ k′) where
   constructor subcode
 

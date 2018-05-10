@@ -5,7 +5,7 @@ module MLib.Matrix.SemiTensor.GeneralizesMul {c ℓ} (struct : Struct bimonoidCo
 
 open import MLib.Prelude
 open import MLib.Matrix.Core
-open OverBimonoid struct
+open import MLib.Matrix.Equality struct
 open import MLib.Matrix.Mul struct
 open import MLib.Matrix.Tensor struct
 open import MLib.Matrix.SemiTensor.Core struct

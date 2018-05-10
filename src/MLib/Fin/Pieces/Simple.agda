@@ -34,7 +34,7 @@ private
   fromPiece′ : ∀ {a b} → Fin (sum (repl a b)) → Fin a × Fin b
   fromPiece′ {a} {b} = Pieces.fromPiece (constPieces a b)
 
-  asPiece-prop : ∀ {a b} → asPiece ≅ Pieces.asPiece (constPieces a b)
+  asPiece-prop : ∀ {a b} → asPiece {a} {b} ≅ Pieces.asPiece (constPieces a b)
   asPiece-prop {a} {b} = ≅.≡-subst-removable _ _ _
 
   abstract
@@ -119,18 +119,15 @@ module _ (a b c : ℕ) where
           open ≡.Reasoning
       in begin
         intoPiece³ (fromPiece³ x)          ≡⟨⟩
-        intoPiece (intoPiece (i , j) , k)  ≡⟨ ≡.cong (intoPiece ∘ (_, k)) (asPiece {a} {b} .Inverse.right-inverse-of _) ⟩
-        intoPiece {a * b} (fromPiece x)    ≡⟨ asPiece {a * b} .Inverse.right-inverse-of _ ⟩
+        intoPiece (intoPiece (i , j) , k)  ≡⟨ ≡.cong (intoPiece ∘ (_, k)) (asPiece {a} {b} .Inverse.right-inverse-of (fromPiece x .proj₁)) ⟩
+        intoPiece {a * b} (fromPiece x)    ≡⟨ asPiece {a * b} .Inverse.right-inverse-of x ⟩
         x                                  ∎
 
     fromPiece³′-intoPiece³′ : ∀ ijk → fromPiece³′ (intoPiece³′ ijk) ≡ ijk
     fromPiece³′-intoPiece³′ (i , j , k) =
-      let i′ = proj₁ (fromPiece³′ (intoPiece³′ (i , j , k)))
-          j′ = proj₁ (proj₂ (fromPiece³′ (intoPiece³′ (i , j , k))))
-          k′ = proj₂ (proj₂ (fromPiece³′ (intoPiece³′ (i , j , k))))
-
-          p , q = Σ.≡⇒≡×≡ (asPiece .Inverse.left-inverse-of _)
-          q′ = ≡.trans (≡.cong fromPiece q) (asPiece .Inverse.left-inverse-of _)
+      let i′ , j′ , k′ = fromPiece³′ (intoPiece³′ (i , j , k))
+          p , q = Σ.≡⇒≡×≡ (asPiece .Inverse.left-inverse-of (i , intoPiece (j , k)))
+          q′ = ≡.trans (≡.cong fromPiece q) (asPiece .Inverse.left-inverse-of (j , k))
 
       in Σ.≡×≡⇒≡ (p , q′)
 

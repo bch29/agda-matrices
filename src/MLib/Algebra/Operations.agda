@@ -79,8 +79,7 @@ sumₜ-punchIn ⦃ props ⦄ {suc n} t (suc i) =
 
 -- '_≈_' is a congruence over 'sumTable n'.
 sumₜ-cong : ∀ {n} {t t′ : Table Carrier n} → t ≋ t′ → sumₜ t ≈ sumₜ t′
-sumₜ-cong {zero} p = refl
-sumₜ-cong {suc n} p = cong + (p _) (sumₜ-cong (p ∘ suc))
+sumₜ-cong = Table.foldr-cong setoid (cong +)
 
 -- A version of 'sumₜ-cong' with heterogeneous table sizes
 sumₜ-cong′ : ∀ {m n} {t : Table Carrier m} {t′ : Table Carrier n} → t ≋′ t′ → sumₜ t ≈ sumₜ t′
@@ -88,8 +87,7 @@ sumₜ-cong′ {m} (≡.refl , q) = sumₜ-cong λ i → q i i ≅.refl
 
 -- '_≡_' is a congruence over 'sum n'.
 sumₜ-cong≡ : ∀ {n} {t t′ : Table Carrier n} → t ≗ t′ → sumₜ t ≡ sumₜ t′
-sumₜ-cong≡ {zero} p = ≡.refl
-sumₜ-cong≡ {suc n} p = ≡.cong₂ _+′_ (p _) (sumₜ-cong≡ (p ∘ suc))
+sumₜ-cong≡ = Table.foldr-cong (≡.setoid Carrier) (≡.cong₂ _+′_)
 
 -- The sum over the constantly zero function is zero.
 sumₜ-zero :

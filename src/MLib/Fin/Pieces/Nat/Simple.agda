@@ -11,10 +11,11 @@ open Table
 repl : ∀ n → ℕ → Table ℕ n
 repl _ = replicate
 
-abstract
-  sum-replicate-* : ∀ m n → sum (repl m n) ≡ m * n
-  sum-replicate-* zero _ = ≡.refl
-  sum-replicate-* (suc m) _ = ≡.cong₂ _+_ ≡.refl (sum-replicate-* m _)
+-- abstract
+-- TODO: why does this break reduction later?
+sum-replicate-* : ∀ m n → sum (repl m n) ≡ m * n
+sum-replicate-* zero _ = ≡.refl
+sum-replicate-* (suc m) _ = ≡.cong₂ _+_ ≡.refl (sum-replicate-* m _)
 
 intoPiece : ∀ a b → ℕ × ℕ → ℕ
 intoPiece a b = Piecesℕ.intoPiece (constPieces a b)

@@ -2,6 +2,7 @@ module MLib.Finite where
 
 open import MLib.Prelude
 import MLib.Fin.Pieces as P
+import MLib.Fin.Pieces.Simple as PS
 open import MLib.Prelude.RelProps
 
 open import Data.List.All as All using (All; []; _∷_) hiding (module All)
@@ -353,37 +354,23 @@ module _ {a p ℓ} {A : Set a} (finiteAt : A → FiniteSet p ℓ) where
       }
     }
     where
-      prodIsSum : ∀ m n → m Nat.* n ≡ Table.foldr Nat._+_ 0 (Table.replicate {m} n)
-      prodIsSum Nat.zero _ = ≡.refl
-      prodIsSum (Nat.suc m) n = ≡.cong₂ Nat._+_ (≡.refl {x = n}) (prodIsSum m n)
-
-      splitProd : ∀ {m n} → Fin (m Nat.* n) → Fin m × Fin n
-      splitProd {m} {n} ij rewrite prodIsSum m n = Inverse.from (P.Pieces.asPiece (P.constPieces m n)) ⟨$⟩ ij
-
-      joinProd : ∀ {m n} → Fin m × Fin n → Fin (m Nat.* n)
-      joinProd {m} {n} ij with Inverse.to (P.Pieces.asPiece (P.constPieces m n )) ⟨$⟩ ij
-      joinProd {m} {n} ij | f rewrite prodIsSum m n = f
-
-      splitProd-joinProd : ∀ {m n} (ij : Fin m × Fin n) → splitProd (joinProd ij) ≡ ij
-      splitProd-joinProd {m} {n} ij rewrite prodIsSum m n = Inverse.left-inverse-of (P.Pieces.asPiece (P.constPieces m n)) ij
-
       to : ∀ {xs} → All P xs → Fin (finiteAllSize xs)
       to [] = Fin.zero
-      to (_∷_ {x} {xs} px ap) = joinProd (PW.toIx _ px , to ap)
+      to (_∷_ {x} {xs} px ap) = PS.intoPiece (PW.toIx _ px , to ap)
 
       to-cong : ∀ {xs}{apx apy : All P xs} → All≈ apx apy → to apx ≡ to apy
       to-cong [] = ≡.refl
-      to-cong (p ∷ q) = ≡.cong₂ (λ i j → joinProd (i , j)) (cong (LeftInverse.to PW′.ontoFin) p) (to-cong q)
+      to-cong (p ∷ q) = ≡.cong₂ (curry PS.intoPiece) (cong (LeftInverse.to PW′.ontoFin) p) (to-cong q)
 
       from : ∀ {xs} → Fin (finiteAllSize xs) → All P xs
       from {List.[]} _ = []
       from {x List.∷ xs} i =
-        (PW.fromIx _ (proj₁ (splitProd i))) ∷
-        from {xs} (proj₂ (splitProd {boundAt x} i))
+        (PW.fromIx _ (proj₁ (PS.fromPiece i))) ∷
+        from {xs} (proj₂ (PS.fromPiece {boundAt x} i))
 
       left-inverse-of : ∀ {xs} (ap : All P xs) → All≈ (from (to ap)) ap
       left-inverse-of [] = Setoid.refl (All-setoid _)
-      left-inverse-of (px ∷ ap) rewrite splitProd-joinProd (PW.toIx _ px , to ap) =
+      left-inverse-of (px ∷ ap) rewrite Inverse.left-inverse-of PS.asPiece (PW.toIx _ px , to ap) =
         PW′.fromIx-toIx px ∷ left-inverse-of ap
 
   All-finiteSet : List A → FiniteSet _ _
