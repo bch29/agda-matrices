@@ -61,12 +61,6 @@ module _ ⦃ props : Has (associative on * ∷ []) ⦄ {m n p q r s} where
       A i′₁ j′₁ *′ (B i′₂ j′₂ *′ C i′₃ j′₃)    ≡⟨⟩
       (A ⊠ (B ⊠ C)) i′ j′                      ∎
 
--- _⊠_ : ∀ {m n p q} → Matrix S m n → Matrix S p q → Matrix S (m *ℕ p) (n *ℕ q)
--- (A ⊠ B) i j =
---   let i₁ , i₂ = fromPiece i
---       j₁ , j₂ = fromPiece j
---   in A i₁ j₁ *′ B i₂ j₂
-
 ⊠-cong : ∀ {m n m′ n′} {p q p′ q′} {A : Matrix S m n} {A′ : Matrix S m′ n′} {B : Matrix S p q} {B′ : Matrix S p′ q′} → A ≃ A′ → B ≃ B′ → (A ⊠ B) ≃ (A′ ⊠ B′)
 ⊠-cong A≃A′ B≃B′ with A≃A′ .m≡p | B≃B′ .m≡p | A≃A′ .n≡q | B≃B′ .n≡q
 ⊠-cong {A = A} {A′} {B} {B′} A≃A′ B≃B′ | ≡.refl | ≡.refl | ≡.refl | ≡.refl = lem
@@ -81,9 +75,23 @@ module _ ⦃ props : Has (associative on * ∷ []) ⦄ {m n p q r s} where
   ∀ {m n} (A : Matrix S m n) → 1● {1} ⊠ A ≃ A
 ⊠-identityˡ A .m≡p = Nat.*-identityˡ _
 ⊠-identityˡ A .n≡q = Nat.*-identityˡ _
-⊠-identityˡ A .equal {i} {i′} {j} {j′} i≅i′ j≅j′ with Σ.≡⇒≡×≡ (fromPiece-1ˡ i i′ i≅i′) | Σ.≡⇒≡×≡ (fromPiece-1ˡ j j′ j≅j′)
-⊠-identityˡ ⦃ props ⦄ {m} {n} A .equal {i} {i′} {j} {j′} i≅i′ j≅j′ | x , x′ | y , y′
-  rewrite x | x′ | y | y′ = from props (1# is leftIdentity for *) _
+⊠-identityˡ ⦃ props ⦄ A .equal {i} {i′} {j} {j′} i≅i′ j≅j′ =
+  let i₁ , i₂ = fromPiece {1} i
+      j₁ , j₂ = fromPiece {1} j
+      -- x  : i₁ ≡ zero
+      -- x′ : i₂ ≡ i′
+      -- y  : j₁ ≡ zero
+      -- y′ : j₂ ≡ j′
+      x , x′ = Σ.≡⇒≡×≡ (fromPiece-1ˡ i i′ i≅i′)
+      y , y′ = Σ.≡⇒≡×≡ (fromPiece-1ˡ j j′ j≅j′)
+
+      open EqReasoning S.setoid
+  in begin
+    (1● {1} ⊠ A) i j           ≡⟨⟩
+    1● {1} i₁ j₁     *′ A i₂ j₂ ≡⟨ ≡.cong₂ _*′_ (≡.cong₂ (1● {1}) x y) (≡.cong₂ A x′ y′) ⟩
+    1● {1} zero zero *′ A i′ j′ ≡⟨⟩
+    1′               *′ A i′ j′ ≈⟨ from props (1# is leftIdentity for *) _ ⟩
+    A i′ j′ ∎
 
 ⊠-identityʳ :
   ⦃ props : Has (1# is rightIdentity for * ∷ []) ⦄ →
