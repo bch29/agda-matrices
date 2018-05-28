@@ -14,14 +14,14 @@ open Nat using () renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 
 open FunctionProperties
 
-open import MLib.Fin.Pieces.Simple
+open import MLib.Fin.Parts.Simple
 
 -- Tensor product
 
 _⊠_ : ∀ {m n p q} → Matrix S m n → Matrix S p q → Matrix S (m *ℕ p) (n *ℕ q)
 (A ⊠ B) i j =
-  let i₁ , i₂ = fromPiece i
-      j₁ , j₂ = fromPiece j
+  let i₁ , i₂ = fromPart i
+      j₁ , j₂ = fromPart j
   in A i₁ j₁ *′ B i₂ j₂
 
 private
@@ -42,14 +42,14 @@ module _ ⦃ props : Has (associative on * ∷ []) ⦄ {m n p q r s} where
   ⊠-associative A B C .m≡p = Nat.*-assoc m p r
   ⊠-associative A B C .n≡q = Nat.*-assoc n q s
   ⊠-associative A B C .equal {i} {i′} {j} {j′} i≅i′ j≅j′ =
-    let i₁ , i₂ , i₃ = fromPiece³ m p r i
-        j₁ , j₂ , j₃ = fromPiece³ n q s j
+    let i₁ , i₂ , i₃ = fromPart³ m p r i
+        j₁ , j₂ , j₃ = fromPart³ n q s j
 
-        i′₁ , i′₂ , i′₃ = fromPiece³′ m p r i′
-        j′₁ , j′₂ , j′₃ = fromPiece³′ n q s j′
+        i′₁ , i′₂ , i′₃ = fromPart³′ m p r i′
+        j′₁ , j′₂ , j′₃ = fromPart³′ n q s j′
 
-        i₁-eq , i₂-eq , i₃-eq = ≡⇒≡×≡×≡ (fromPiece-assoc m p r i≅i′)
-        j₁-eq , j₂-eq , j₃-eq = ≡⇒≡×≡×≡ (fromPiece-assoc n q s j≅j′)
+        i₁-eq , i₂-eq , i₃-eq = ≡⇒≡×≡×≡ (fromPart-assoc m p r i≅i′)
+        j₁-eq , j₂-eq , j₃-eq = ≡⇒≡×≡×≡ (fromPart-assoc n q s j≅j′)
 
         open EqReasoning S.setoid
     in begin
@@ -76,14 +76,14 @@ module _ ⦃ props : Has (associative on * ∷ []) ⦄ {m n p q r s} where
 ⊠-identityˡ A .m≡p = Nat.*-identityˡ _
 ⊠-identityˡ A .n≡q = Nat.*-identityˡ _
 ⊠-identityˡ ⦃ props ⦄ A .equal {i} {i′} {j} {j′} i≅i′ j≅j′ =
-  let i₁ , i₂ = fromPiece {1} i
-      j₁ , j₂ = fromPiece {1} j
+  let i₁ , i₂ = fromPart {1} i
+      j₁ , j₂ = fromPart {1} j
       -- x  : i₁ ≡ zero
       -- x′ : i₂ ≡ i′
       -- y  : j₁ ≡ zero
       -- y′ : j₂ ≡ j′
-      x , x′ = Σ.≡⇒≡×≡ (fromPiece-1ˡ i i′ i≅i′)
-      y , y′ = Σ.≡⇒≡×≡ (fromPiece-1ˡ j j′ j≅j′)
+      x , x′ = Σ.≡⇒≡×≡ (fromPart-1ˡ i i′ i≅i′)
+      y , y′ = Σ.≡⇒≡×≡ (fromPart-1ˡ j j′ j≅j′)
 
       open EqReasoning S.setoid
   in begin
@@ -98,6 +98,6 @@ module _ ⦃ props : Has (associative on * ∷ []) ⦄ {m n p q r s} where
   ∀ {m n} (A : Matrix S m n) → A ⊠ 1● {1} ≃ A
 ⊠-identityʳ A .m≡p = Nat.*-identityʳ _
 ⊠-identityʳ A .n≡q = Nat.*-identityʳ _
-⊠-identityʳ A .equal {i} {i′} {j} {j′} i≅i′ j≅j′ with Σ.≡⇒≡×≡ (fromPiece-1ʳ i i′ i≅i′) | Σ.≡⇒≡×≡ (fromPiece-1ʳ j j′ j≅j′)
+⊠-identityʳ A .equal {i} {i′} {j} {j′} i≅i′ j≅j′ with Σ.≡⇒≡×≡ (fromPart-1ʳ i i′ i≅i′) | Σ.≡⇒≡×≡ (fromPart-1ʳ j j′ j≅j′)
 ⊠-identityʳ ⦃ props ⦄ A .equal {i} {i′} {j} {j′} i≅i′ j≅j′ | x , x′ | y , y′
   rewrite x | x′ | y | y′ = from props (1# is rightIdentity for *) _

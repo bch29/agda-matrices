@@ -1,7 +1,7 @@
 module MLib.Algebra.PropertyCode.RawStruct where
 
 open import MLib.Prelude
-open import MLib.Fin.Pieces
+open import MLib.Fin.Parts
 open import MLib.Finite
 
 open import Relation.Binary as B using (Setoid)

@@ -13,7 +13,7 @@ open import MLib.Algebra.Operations struct
 
 open Nat using () renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 
-open import MLib.Fin.Pieces.Simple
+open import MLib.Fin.Parts.Simple
 
 open import Data.Nat.LCM
 open import Data.Nat.Divisibility

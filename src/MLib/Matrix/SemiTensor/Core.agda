@@ -12,13 +12,13 @@ open import MLib.Algebra.Operations struct
 
 open Nat using () renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 
-open import MLib.Fin.Pieces.Simple
+open import MLib.Fin.Parts.Simple
 
 open import Data.Nat.LCM
 open import Data.Nat.Divisibility
 
 chunkVec : ∀ {m n} → Table S (m *ℕ n) → Table (Table S n) m
-chunkVec {m} {n} t .lookup i .lookup j = lookup t (intoPiece (i , j))
+chunkVec {m} {n} t .lookup i .lookup j = lookup t (intoPart (i , j))
 
 -- Case 1 of semi-tensor inner product of vectors
 

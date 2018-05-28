@@ -29,7 +29,7 @@ module _ {c ℓ} (icMonoid : IdempotentCommutativeMonoid c ℓ) where
   foldMap f = sumₜ (Table.map f enumₜ)
 
   foldMap-cong : ∀ {f g} → (∀ x → f x ≈′ g x) → foldMap f ≈′ foldMap g
-  foldMap-cong p = sumₜ-cong (p ∘ lookup enumₜ)
+  foldMap-cong p = sumₜ-cong-≈ (p ∘ lookup enumₜ)
 
   private
     inhabited : ∀ {N} (i : Fin N) → ∃ λ n → N ≡ Nat.suc n

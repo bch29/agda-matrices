@@ -1,8 +1,8 @@
 module MLib.Finite where
 
 open import MLib.Prelude
-import MLib.Fin.Pieces as P
-import MLib.Fin.Pieces.Simple as PS
+import MLib.Fin.Parts as P
+import MLib.Fin.Parts.Simple as PS
 open import MLib.Prelude.RelProps
 
 open import Data.List.All as All using (All; []; _∷_) hiding (module All)
@@ -158,18 +158,18 @@ module _ {c} {A : Set c} {N} (isFiniteSet : IsFiniteSet A N) where
       module PW x = FiniteSet (finiteAt x)
       open PW using () renaming (Carrier to P)
 
-      pieces : P.Pieces A PW.N
-      pieces = record
-        { numPieces = N
-        ; pieces = F.enumₜ
+      parts : P.Parts A PW.N
+      parts = record
+        { numParts = N
+        ; parts = F.enumₜ
         }
 
-      open P.Pieces pieces hiding (pieces)
+      open P.Parts parts hiding (parts)
 
     Σ-isFiniteSetoid : IsFiniteSetoid (OverΣ.setoid PW.setoid) totalSize
     Σ-isFiniteSetoid = record
       { ontoFin
-        =  Inverse.left-inverse asPiece
+        =  Inverse.left-inverse asPart
         ⁱ∘ intoCoords
         ⁱ∘ Σ-↞′ {B-setoid = PW.setoid} F.ontoFin
       }
@@ -356,21 +356,21 @@ module _ {a p ℓ} {A : Set a} (finiteAt : A → FiniteSet p ℓ) where
     where
       to : ∀ {xs} → All P xs → Fin (finiteAllSize xs)
       to [] = Fin.zero
-      to (_∷_ {x} {xs} px ap) = PS.intoPiece (PW.toIx _ px , to ap)
+      to (_∷_ {x} {xs} px ap) = PS.intoPart (PW.toIx _ px , to ap)
 
       to-cong : ∀ {xs}{apx apy : All P xs} → All≈ apx apy → to apx ≡ to apy
       to-cong [] = ≡.refl
-      to-cong (p ∷ q) = ≡.cong₂ (curry PS.intoPiece) (cong (LeftInverse.to PW′.ontoFin) p) (to-cong q)
+      to-cong (p ∷ q) = ≡.cong₂ (curry PS.intoPart) (cong (LeftInverse.to PW′.ontoFin) p) (to-cong q)
 
       from : ∀ {xs} → Fin (finiteAllSize xs) → All P xs
       from {List.[]} _ = []
       from {x List.∷ xs} i =
-        (PW.fromIx _ (proj₁ (PS.fromPiece i))) ∷
-        from {xs} (proj₂ (PS.fromPiece {boundAt x} i))
+        (PW.fromIx _ (proj₁ (PS.fromPart i))) ∷
+        from {xs} (proj₂ (PS.fromPart {boundAt x} i))
 
       left-inverse-of : ∀ {xs} (ap : All P xs) → All≈ (from (to ap)) ap
       left-inverse-of [] = Setoid.refl (All-setoid _)
-      left-inverse-of (px ∷ ap) rewrite Inverse.left-inverse-of PS.asPiece (PW.toIx _ px , to ap) =
+      left-inverse-of (px ∷ ap) rewrite Inverse.left-inverse-of PS.asPart (PW.toIx _ px , to ap) =
         PW′.fromIx-toIx px ∷ left-inverse-of ap
 
   All-finiteSet : List A → FiniteSet _ _

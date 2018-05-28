@@ -1,7 +1,6 @@
 module MLib.Algebra.PropertyCode.Core where
 
 open import MLib.Prelude
-open import MLib.Fin.Pieces
 open import MLib.Finite
 import MLib.Finite.Properties as FiniteProps
 open import MLib.Algebra.PropertyCode.RawStruct
