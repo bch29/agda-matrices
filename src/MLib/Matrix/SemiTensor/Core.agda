@@ -18,7 +18,7 @@ open import Data.Nat.LCM
 open import Data.Nat.Divisibility
 
 chunkVec : ∀ {m n} → Table S (m *ℕ n) → Table (Table S n) m
-chunkVec {m} {n} t .lookup i .lookup j = lookup t (intoPart (i , j))
+chunkVec {m} {n} t .lookup i .lookup j = lookup t (fromParts (i , j))
 
 -- Case 1 of semi-tensor inner product of vectors
 

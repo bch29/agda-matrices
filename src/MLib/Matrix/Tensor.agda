@@ -20,8 +20,8 @@ open import MLib.Fin.Parts.Simple
 
 _⊠_ : ∀ {m n p q} → Matrix S m n → Matrix S p q → Matrix S (m *ℕ p) (n *ℕ q)
 (A ⊠ B) i j =
-  let i₁ , i₂ = fromPart i
-      j₁ , j₂ = fromPart j
+  let i₁ , i₂ = toParts i
+      j₁ , j₂ = toParts j
   in A i₁ j₁ *′ B i₂ j₂
 
 private
@@ -42,22 +42,20 @@ module _ ⦃ props : Has (associative on * ∷ []) ⦄ {m n p q r s} where
   ⊠-associative A B C .m≡p = Nat.*-assoc m p r
   ⊠-associative A B C .n≡q = Nat.*-assoc n q s
   ⊠-associative A B C .equal {i} {i′} {j} {j′} i≅i′ j≅j′ =
-    let i₁ , i₂ , i₃ = fromPart³ m p r i
-        j₁ , j₂ , j₃ = fromPart³ n q s j
+    let i₁ , i₂ , i₃ = toParts³ m p r i
+        j₁ , j₂ , j₃ = toParts³ n q s j
 
-        i′₁ , i′₂ , i′₃ = fromPart³′ m p r i′
-        j′₁ , j′₂ , j′₃ = fromPart³′ n q s j′
+        i′₁ , i′₂ , i′₃ = toParts³′ m p r i′
+        j′₁ , j′₂ , j′₃ = toParts³′ n q s j′
 
-        i₁-eq , i₂-eq , i₃-eq = ≡⇒≡×≡×≡ (fromPart-assoc m p r i≅i′)
-        j₁-eq , j₂-eq , j₃-eq = ≡⇒≡×≡×≡ (fromPart-assoc n q s j≅j′)
+        i₁-eq , i₂-eq , i₃-eq = ≡⇒≡×≡×≡ (toParts-assoc m p r i≅i′)
+        j₁-eq , j₂-eq , j₃-eq = ≡⇒≡×≡×≡ (toParts-assoc n q s j≅j′)
 
         open EqReasoning S.setoid
     in begin
       ((A ⊠ B) ⊠ C) i j                        ≡⟨⟩
       A i₁ j₁ *′ B i₂ j₂ *′ C i₃ j₃            ≈⟨ from props (associative on *) _ _ _ ⟩
-      A i₁ j₁ *′ (B i₂ j₂ *′ C i₃ j₃)          ≈⟨ cong * (S.reflexive (≡.cong₂ A i₁-eq j₁-eq)) S.refl ⟩
-      A i′₁ j′₁ *′ (B i₂ j₂ *′ C i₃ j₃)        ≈⟨ cong * S.refl (cong * (S.reflexive (≡.cong₂ B i₂-eq j₂-eq)) S.refl) ⟩
-      A i′₁ j′₁ *′ (B i′₂ j′₂ *′ C i₃ j₃)      ≈⟨ cong * S.refl (cong * S.refl (S.reflexive (≡.cong₂ C i₃-eq j₃-eq))) ⟩
+      A i₁ j₁ *′ (B i₂ j₂ *′ C i₃ j₃)          ≡⟨ ≡.cong₂ _*′_ (≡.cong₂ A i₁-eq j₁-eq) (≡.cong₂ _*′_ (≡.cong₂ B i₂-eq j₂-eq) (≡.cong₂ C i₃-eq j₃-eq)) ⟩
       A i′₁ j′₁ *′ (B i′₂ j′₂ *′ C i′₃ j′₃)    ≡⟨⟩
       (A ⊠ (B ⊠ C)) i′ j′                      ∎
 
@@ -76,14 +74,14 @@ module _ ⦃ props : Has (associative on * ∷ []) ⦄ {m n p q r s} where
 ⊠-identityˡ A .m≡p = Nat.*-identityˡ _
 ⊠-identityˡ A .n≡q = Nat.*-identityˡ _
 ⊠-identityˡ ⦃ props ⦄ A .equal {i} {i′} {j} {j′} i≅i′ j≅j′ =
-  let i₁ , i₂ = fromPart {1} i
-      j₁ , j₂ = fromPart {1} j
+  let i₁ , i₂ = toParts {1} i
+      j₁ , j₂ = toParts {1} j
       -- x  : i₁ ≡ zero
       -- x′ : i₂ ≡ i′
       -- y  : j₁ ≡ zero
       -- y′ : j₂ ≡ j′
-      x , x′ = Σ.≡⇒≡×≡ (fromPart-1ˡ i i′ i≅i′)
-      y , y′ = Σ.≡⇒≡×≡ (fromPart-1ˡ j j′ j≅j′)
+      x , x′ = Σ.≡⇒≡×≡ (toParts-1ˡ i i′ i≅i′)
+      y , y′ = Σ.≡⇒≡×≡ (toParts-1ˡ j j′ j≅j′)
 
       open EqReasoning S.setoid
   in begin
@@ -98,6 +96,6 @@ module _ ⦃ props : Has (associative on * ∷ []) ⦄ {m n p q r s} where
   ∀ {m n} (A : Matrix S m n) → A ⊠ 1● {1} ≃ A
 ⊠-identityʳ A .m≡p = Nat.*-identityʳ _
 ⊠-identityʳ A .n≡q = Nat.*-identityʳ _
-⊠-identityʳ A .equal {i} {i′} {j} {j′} i≅i′ j≅j′ with Σ.≡⇒≡×≡ (fromPart-1ʳ i i′ i≅i′) | Σ.≡⇒≡×≡ (fromPart-1ʳ j j′ j≅j′)
+⊠-identityʳ A .equal {i} {i′} {j} {j′} i≅i′ j≅j′ with Σ.≡⇒≡×≡ (toParts-1ʳ i i′ i≅i′) | Σ.≡⇒≡×≡ (toParts-1ʳ j j′ j≅j′)
 ⊠-identityʳ ⦃ props ⦄ A .equal {i} {i′} {j} {j′} i≅i′ j≅j′ | x , x′ | y , y′
   rewrite x | x′ | y | y′ = from props (1# is rightIdentity for *) _

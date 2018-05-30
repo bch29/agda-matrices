@@ -169,7 +169,7 @@ module _ {c} {A : Set c} {N} (isFiniteSet : IsFiniteSet A N) where
     Σ-isFiniteSetoid : IsFiniteSetoid (OverΣ.setoid PW.setoid) totalSize
     Σ-isFiniteSetoid = record
       { ontoFin
-        =  Inverse.left-inverse asPart
+        =  Inverse.left-inverse (Inverse.sym asParts)
         ⁱ∘ intoCoords
         ⁱ∘ Σ-↞′ {B-setoid = PW.setoid} F.ontoFin
       }
@@ -356,21 +356,21 @@ module _ {a p ℓ} {A : Set a} (finiteAt : A → FiniteSet p ℓ) where
     where
       to : ∀ {xs} → All P xs → Fin (finiteAllSize xs)
       to [] = Fin.zero
-      to (_∷_ {x} {xs} px ap) = PS.intoPart (PW.toIx _ px , to ap)
+      to (_∷_ {x} {xs} px ap) = PS.fromParts (PW.toIx _ px , to ap)
 
       to-cong : ∀ {xs}{apx apy : All P xs} → All≈ apx apy → to apx ≡ to apy
       to-cong [] = ≡.refl
-      to-cong (p ∷ q) = ≡.cong₂ (curry PS.intoPart) (cong (LeftInverse.to PW′.ontoFin) p) (to-cong q)
+      to-cong (p ∷ q) = ≡.cong₂ (curry PS.fromParts) (cong (LeftInverse.to PW′.ontoFin) p) (to-cong q)
 
       from : ∀ {xs} → Fin (finiteAllSize xs) → All P xs
       from {List.[]} _ = []
       from {x List.∷ xs} i =
-        (PW.fromIx _ (proj₁ (PS.fromPart i))) ∷
-        from {xs} (proj₂ (PS.fromPart {boundAt x} i))
+        (PW.fromIx _ (proj₁ (PS.toParts i))) ∷
+        from {xs} (proj₂ (PS.toParts {boundAt x} i))
 
       left-inverse-of : ∀ {xs} (ap : All P xs) → All≈ (from (to ap)) ap
       left-inverse-of [] = Setoid.refl (All-setoid _)
-      left-inverse-of (px ∷ ap) rewrite Inverse.left-inverse-of PS.asPart (PW.toIx _ px , to ap) =
+      left-inverse-of (px ∷ ap) rewrite Inverse.right-inverse-of PS.asParts (PW.toIx _ px , to ap) =
         PW′.fromIx-toIx px ∷ left-inverse-of ap
 
   All-finiteSet : List A → FiniteSet _ _

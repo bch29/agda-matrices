@@ -26,45 +26,45 @@ module Parts {a} {A : Set a} {size : A → ℕ} (P : Parts A size) where
     bounded′ : ∀ {i} (j : Fin (sizeAt i)) → toℕ j < PN.sizeAt (fromℕ≤ (Fin.bounded i))
     bounded′ j = Nat.≤-trans (Fin.bounded j) (Nat.≤-reflexive (≡.sym (≡.cong sizeAt (Fin.fromℕ≤-toℕ _ _))))
 
-  intoPart : Σ (Fin numParts) (Fin ∘ sizeAt) → Fin totalSize
-  intoPart (i , j) = fromℕ≤ {PN.intoPart (toℕ i , toℕ j)} (PN.intoPart-prop (Fin.bounded i) (bounded′ j))
+  fromParts : Σ (Fin numParts) (Fin ∘ sizeAt) → Fin totalSize
+  fromParts (i , j) = fromℕ≤ {PN.fromParts (toℕ i , toℕ j)} (PN.fromParts-prop (Fin.bounded i) (bounded′ j))
 
-  fromPart : Fin totalSize → Σ (Fin numParts) (Fin ∘ sizeAt)
-  fromPart k =
-    let p , q = PN.fromPart-prop (Fin.bounded k)
+  toParts : Fin totalSize → Σ (Fin numParts) (Fin ∘ sizeAt)
+  toParts k =
+    let p , q = PN.toParts-prop (Fin.bounded k)
     in fromℕ≤ p , fromℕ≤ q
 
   abstract
-    intoPart-intoPartℕ : (i : Fin numParts) (j : Fin (sizeAt i)) → toℕ (intoPart (i , j)) ≡ PN.intoPart (toℕ i , toℕ j)
-    intoPart-intoPartℕ _ _ = Fin.toℕ-fromℕ≤ _
+    fromParts-fromPartsℕ : (i : Fin numParts) (j : Fin (sizeAt i)) → toℕ (fromParts (i , j)) ≡ PN.fromParts (toℕ i , toℕ j)
+    fromParts-fromPartsℕ _ _ = Fin.toℕ-fromℕ≤ _
 
-    fromPart-fromPartℕ : (k : Fin totalSize) → Σ.map toℕ toℕ (fromPart k) ≡ PN.fromPart (toℕ k)
-    fromPart-fromPartℕ k = Σ.≡×≡⇒≡ (Fin.toℕ-fromℕ≤ _ , Fin.toℕ-fromℕ≤ _)
+    toParts-toPartsℕ : (k : Fin totalSize) → Σ.map toℕ toℕ (toParts k) ≡ PN.toParts (toℕ k)
+    toParts-toPartsℕ k = Σ.≡×≡⇒≡ (Fin.toℕ-fromℕ≤ _ , Fin.toℕ-fromℕ≤ _)
 
-    fromPart-intoPart : ∀ {i j} → fromPart (intoPart (i , j)) ≡ (i , j)
-    fromPart-intoPart {i} {j} = Fin.toℕ-injective₂ (begin
-      Σ.map toℕ toℕ (fromPart (intoPart (i , j)))   ≡⟨ fromPart-fromPartℕ _ ⟩
-      PN.fromPart (toℕ (intoPart (i , j)))          ≡⟨ ≡.cong PN.fromPart (intoPart-intoPartℕ i j) ⟩
-      PN.fromPart (PN.intoPart (toℕ i , toℕ j))    ≡⟨ PN.fromPart-intoPart (Fin.bounded i) (bounded′ j) ⟩
+    toParts-fromParts : ∀ {i j} → toParts (fromParts (i , j)) ≡ (i , j)
+    toParts-fromParts {i} {j} = Fin.toℕ-injective₂ (begin
+      Σ.map toℕ toℕ (toParts (fromParts (i , j)))   ≡⟨ toParts-toPartsℕ _ ⟩
+      PN.toParts (toℕ (fromParts (i , j)))          ≡⟨ ≡.cong PN.toParts (fromParts-fromPartsℕ i j) ⟩
+      PN.toParts (PN.fromParts (toℕ i , toℕ j))    ≡⟨ PN.toParts-fromParts (Fin.bounded i) (bounded′ j) ⟩
       (toℕ i , toℕ j)                                 ∎)
       where open ≡.Reasoning
 
-    intoPart-fromPart : ∀ {k} → intoPart (fromPart k) ≡ k
-    intoPart-fromPart {k} = Fin.toℕ-injective (
+    fromParts-toParts : ∀ {k} → fromParts (toParts k) ≡ k
+    fromParts-toParts {k} = Fin.toℕ-injective (
       begin
-        toℕ (intoPart (fromPart k))               ≡⟨ uncurry intoPart-intoPartℕ (fromPart k) ⟩
-        PN.intoPart (Σ.map toℕ toℕ (fromPart k))  ≡⟨ ≡.cong PN.intoPart (fromPart-fromPartℕ k) ⟩
-        PN.intoPart (PN.fromPart (toℕ k))         ≡⟨ PN.intoPart-fromPart (toℕ k) (Fin.bounded k) ⟩
+        toℕ (fromParts (toParts k))               ≡⟨ uncurry fromParts-fromPartsℕ (toParts k) ⟩
+        PN.fromParts (Σ.map toℕ toℕ (toParts k))  ≡⟨ ≡.cong PN.fromParts (toParts-toPartsℕ k) ⟩
+        PN.fromParts (PN.toParts (toℕ k))         ≡⟨ PN.fromParts-toParts (toℕ k) (Fin.bounded k) ⟩
         toℕ k                                       ∎)
       where open ≡.Reasoning
 
-  asPart : Σ (Fin numParts) (Fin ∘ sizeAt) ↔ Fin totalSize
-  asPart = record
-    { to = ≡.→-to-⟶ intoPart
-    ; from = ≡.→-to-⟶ fromPart
+  asParts : Fin totalSize ↔ Σ (Fin numParts) (Fin ∘ sizeAt)
+  asParts = record
+    { to = ≡.→-to-⟶ toParts
+    ; from = ≡.→-to-⟶ fromParts
     ; inverse-of = record
-      { left-inverse-of = λ _ → fromPart-intoPart
-      ; right-inverse-of = λ _ → intoPart-fromPart
+      { left-inverse-of = λ _ → fromParts-toParts
+      ; right-inverse-of = λ _ → toParts-fromParts
       }
     }
 
@@ -80,23 +80,20 @@ module _ {a} {A : Set a} {size : A → ℕ} (P₁ : Parts² A size) where
       P₂ = P₁.partAt i
       module P₂ = Parts P₂
 
-    intoPart² : (j : Fin P₂.numParts) → Fin (size (P₂.partAt j)) → Fin P₁.totalSize
-    intoPart² j = curry P₁.intoPart i ∘ curry P₂.intoPart j
+    fromParts² : (j : Fin P₂.numParts) → Fin (size (P₂.partAt j)) → Fin P₁.totalSize
+    fromParts² j = curry P₁.fromParts i ∘ curry P₂.fromParts j
 
-  asPart² :
+  asParts² :
+    Fin P₁.totalSize ↔
     Σ (Fin P₁.numParts) (λ i →
       let P₂ = P₁.partAt i
           module P₂ = Parts P₂
       in Σ (Fin P₂.numParts) (Fin ∘ P₂.sizeAt))
-    ↔ Fin P₁.totalSize
-  asPart² =
-      Σ (Fin P₁.numParts) (λ i →
-        let P₂ = P₁.partAt i
-            module P₂ = Parts P₂
-        in Σ (Fin P₂.numParts) (Fin ∘ P₂.sizeAt))
-    ↔⟨ Σ-bij (Parts.asPart ∘ P₁.partAt) ⟩
-      Σ (Fin P₁.numParts) (Fin ∘ P₁.sizeAt)
-    ↔⟨ P₁.asPart ⟩
-      Fin P₁.totalSize
-    ∎
+  asParts² =
+    Fin P₁.totalSize ↔⟨ P₁.asParts ⟩
+    Σ (Fin P₁.numParts) (Fin ∘ P₁.sizeAt) ↔⟨ Σ-bij (Parts.asParts ∘ P₁.partAt) ⟩
+    Σ (Fin P₁.numParts) (λ i →
+      let P₂ = P₁.partAt i
+          module P₂ = Parts P₂
+      in Σ (Fin P₂.numParts) (Fin ∘ P₂.sizeAt)) ∎
     where open BijReasoning

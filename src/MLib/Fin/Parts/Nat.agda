@@ -48,17 +48,17 @@ module Impl where
 
   -- Core functions
 
-  intoPart : {numParts : ℕ} (parts : Table ℕ numParts) → ℕ × ℕ → ℕ
-  intoPart parts (zero , j) = j
-  intoPart {zero} parts (suc i , j) = 0
-  intoPart {suc numParts} parts (suc i , j) = lookup parts zero + intoPart (tail parts) (i , j)
+  fromParts : {numParts : ℕ} (parts : Table ℕ numParts) → ℕ × ℕ → ℕ
+  fromParts parts (zero , j) = j
+  fromParts {zero} parts (suc i , j) = 0
+  fromParts {suc numParts} parts (suc i , j) = lookup parts zero + fromParts (tail parts) (i , j)
 
-  fromPart : {numParts : ℕ} (parts : Table ℕ numParts) (k : ℕ) → ℕ × ℕ
-  fromPart {zero} parts k = 0 , 0
-  fromPart {suc n} parts k with lookup parts zero | compare′ k (lookup parts zero)
-  fromPart {suc n} parts k | .(suc (k + k₁)) | less .k k₁ = 0 , k
-  fromPart {suc n} parts .(lz + k) | lz | gte .lz k =
-    let i , j = fromPart (tail parts) k
+  toParts : {numParts : ℕ} (parts : Table ℕ numParts) (k : ℕ) → ℕ × ℕ
+  toParts {zero} parts k = 0 , 0
+  toParts {suc n} parts k with lookup parts zero | compare′ k (lookup parts zero)
+  toParts {suc n} parts k | .(suc (k + k₁)) | less .k k₁ = 0 , k
+  toParts {suc n} parts .(lz + k) | lz | gte .lz k =
+    let i , j = toParts (tail parts) k
     in (suc i , j)
 
   -- Property lemmas
@@ -72,42 +72,42 @@ module Impl where
 
   -- Properties
 
-  intoPart-prop : ∀ {numParts} (parts : Table ℕ numParts) {i j} → i < numParts → j < tryLookup 0 parts i → intoPart parts (i , j) < sum parts
-  intoPart-prop {suc numParts} _ {zero} (Nat.s≤s p) q = Nat.≤-trans q (Nat.m≤m+n _ _)
-  intoPart-prop {suc numParts} parts {suc i} (Nat.s≤s p) q = +-<-lem (intoPart-prop (tail parts) p q)
+  fromParts-prop : ∀ {numParts} (parts : Table ℕ numParts) {i j} → i < numParts → j < tryLookup 0 parts i → fromParts parts (i , j) < sum parts
+  fromParts-prop {suc numParts} _ {zero} (Nat.s≤s p) q = Nat.≤-trans q (Nat.m≤m+n _ _)
+  fromParts-prop {suc numParts} parts {suc i} (Nat.s≤s p) q = +-<-lem (fromParts-prop (tail parts) p q)
 
-  fromPart-prop : ∀ {numParts : ℕ} (parts : Table ℕ numParts) {k} → k < sum parts →
-    let i , j = fromPart parts k
+  toParts-prop : ∀ {numParts : ℕ} (parts : Table ℕ numParts) {k} → k < sum parts →
+    let i , j = toParts parts k
     in Σ (i < numParts) (λ q → j < lookup parts (fromℕ≤ {i} q))
-  fromPart-prop {zero} parts {k} ()
-  fromPart-prop {suc numParts} parts {k} p with lookup parts zero | compare′ k (lookup parts zero) | ≡.inspect (lookup parts) zero
-  fromPart-prop {suc numParts} parts {k} p | .(suc (k + k₁)) | less .k k₁ | ≡.[ eq ] =
+  toParts-prop {zero} parts {k} ()
+  toParts-prop {suc numParts} parts {k} p with lookup parts zero | compare′ k (lookup parts zero) | ≡.inspect (lookup parts) zero
+  toParts-prop {suc numParts} parts {k} p | .(suc (k + k₁)) | less .k k₁ | ≡.[ eq ] =
     Nat.s≤s Nat.z≤n ,
     Nat.≤-trans (Nat.s≤s (Nat.m≤m+n _ _)) (Nat.≤-reflexive (≡.sym eq))
-  fromPart-prop {suc numParts} parts {.(lz + k)} p | lz | gte .lz k | insp =
-    let q , r = fromPart-prop (tail parts) {k} (lz-lem _ _ _ p)
+  toParts-prop {suc numParts} parts {.(lz + k)} p | lz | gte .lz k | insp =
+    let q , r = toParts-prop (tail parts) {k} (lz-lem _ _ _ p)
     in Nat.s≤s q , Nat.≤-trans r (Nat.≤-reflexive (≡.cong (lookup parts) (fromℕ-suc-lem _)))
 
-  fromPart-intoPart :
+  toParts-fromParts :
     {numParts : ℕ} (parts : Table ℕ numParts) (i j : ℕ) (p : j < tryLookup 0 parts i) →
-    fromPart parts (intoPart parts (i , j)) ≡ (i , j)
-  fromPart-intoPart {zero} _ i j ()
-  fromPart-intoPart {suc numParts} parts i j p
+    toParts parts (fromParts parts (i , j)) ≡ (i , j)
+  toParts-fromParts {zero} _ i j ()
+  toParts-fromParts {suc numParts} parts i j p
     with lookup parts zero
-       | intoPart parts (i , j)
-       | compare′ (intoPart parts (i , j)) (lookup parts zero)
+       | fromParts parts (i , j)
+       | compare′ (fromParts parts (i , j)) (lookup parts zero)
        | ≡.inspect (lookup parts) zero
-       | ≡.inspect (intoPart parts) (i , j)
-  fromPart-intoPart {suc numParts} parts zero .ipi p
+       | ≡.inspect (fromParts parts) (i , j)
+  toParts-fromParts {suc numParts} parts zero .ipi p
     | .(suc (ipi + k)) | ipi | less .ipi k | insp₁ | ≡.[ ≡.refl ]
     = ≡.refl
-  fromPart-intoPart {suc numParts} parts zero .(lookup parts zero + k) p
+  toParts-fromParts {suc numParts} parts zero .(lookup parts zero + k) p
     | .(lookup parts zero) | .(lookup parts zero + k) | gte .(lookup parts zero) k | ≡.[ ≡.refl ] | ≡.[ ≡.refl ]
     = ⊥-elim (Nat.n≮n _ (Nat.≤-trans p (Nat.m≤m+n _ k)))
-  fromPart-intoPart {suc numParts} parts (suc i) j p
+  toParts-fromParts {suc numParts} parts (suc i) j p
     | .(suc (ipi + k)) | ipi | less .ipi k | ≡.[ eq ] | ≡.[ eq₁ ]
     = let y = lookup parts zero
-          z = intoPart _ (i , j)
+          z = fromParts _ (i , j)
       in ⊥-elim (Nat.m≢1+m+n y {z + k} (
          begin
            y                   ≡⟨ eq ⟩
@@ -115,53 +115,53 @@ module Impl where
            suc ((y + z) + k)   ≡⟨ ≡.cong suc (Nat.+-assoc y z k) ⟩
            suc (y + (z + k))   ∎))
     where open ≡.Reasoning
-  fromPart-intoPart {suc numParts} parts (suc i) j p
+  toParts-fromParts {suc numParts} parts (suc i) j p
     | .(lookup parts zero) | .(lookup parts zero + k) | gte .(lookup parts zero) k | ≡.[ ≡.refl ] | ≡.[ eq₁ ]
     with Nat.+-cancelˡ-≡ (lookup parts zero) eq₁
-  fromPart-intoPart {suc numParts} parts (suc i) j p
+  toParts-fromParts {suc numParts} parts (suc i) j p
     | .(lookup parts zero) | .(lookup parts zero + k) | gte .(lookup parts zero) k | ≡.[ ≡.refl ] | ≡.[ eq₁ ]
     | eq₂ rewrite ≡.sym eq₂
-    = let q , r = Σ.≡⇒Pointwise-≡ (fromPart-intoPart (tail parts) i j p)
+    = let q , r = Σ.≡⇒Pointwise-≡ (toParts-fromParts (tail parts) i j p)
       in Σ.Pointwise-≡⇒≡ (≡.cong suc q , r)
 
-  intoPart-fromPart : {numParts : ℕ} (parts : Table ℕ numParts) (k : ℕ) (p : k < sum parts) → intoPart parts (fromPart parts k) ≡ k
-  intoPart-fromPart {zero} parts k ()
-  intoPart-fromPart {suc numParts} parts k p
+  fromParts-toParts : {numParts : ℕ} (parts : Table ℕ numParts) (k : ℕ) (p : k < sum parts) → fromParts parts (toParts parts k) ≡ k
+  fromParts-toParts {zero} parts k ()
+  fromParts-toParts {suc numParts} parts k p
     with lookup parts zero
        | compare′ k (lookup parts zero)
        | ≡.inspect (lookup parts) zero
-  intoPart-fromPart {suc numParts} parts k p | .(suc (k + k₁)) | less .k k₁ | insp = ≡.refl
-  intoPart-fromPart {suc numParts} parts .(lookup parts zero + k) p | .(lookup parts zero) | gte .(lookup parts zero) k | ≡.[ ≡.refl ]
+  fromParts-toParts {suc numParts} parts k p | .(suc (k + k₁)) | less .k k₁ | insp = ≡.refl
+  fromParts-toParts {suc numParts} parts .(lookup parts zero + k) p | .(lookup parts zero) | gte .(lookup parts zero) k | ≡.[ ≡.refl ]
     = ≡.cong₂ Nat._+_
       ≡.refl
-      (intoPart-fromPart (tail parts) k
+      (fromParts-toParts (tail parts) k
         (Nat.+-cancelˡ-≤ (lookup parts zero) (Nat.≤-trans (Nat.≤-reflexive (Nat.+-suc _ k)) p)))
 
 
 module Partsℕ {a} {A : Set a} {size : A → ℕ} (P : Parts A size) where
   open Parts P public
 
-  intoPart : ℕ × ℕ → ℕ
-  intoPart = Impl.intoPart partsizes
+  fromParts : ℕ × ℕ → ℕ
+  fromParts = Impl.fromParts partsizes
 
-  fromPart : ℕ → ℕ × ℕ
-  fromPart = Impl.fromPart partsizes
+  toParts : ℕ → ℕ × ℕ
+  toParts = Impl.toParts partsizes
 
   private
     tryLookup-lem : ∀ {i j} (p : i < numParts) → j < sizeAt (Fin.fromℕ≤ p) → j < Impl.tryLookup 0 partsizes i
     tryLookup-lem p q = Nat.≤-trans q (Nat.≤-reflexive (≡.trans (Impl.tryLookup-prop {z = 0} partsizes) (≡.cong (Impl.tryLookup 0 partsizes) (Fin.toℕ-fromℕ≤ _))))
 
-  intoPart-prop : ∀ {i j} (p : i < numParts) → j < sizeAt (Fin.fromℕ≤ p) → intoPart (i , j) < totalSize
-  intoPart-prop p = Impl.intoPart-prop _ p ∘ tryLookup-lem p
+  fromParts-prop : ∀ {i j} (p : i < numParts) → j < sizeAt (Fin.fromℕ≤ p) → fromParts (i , j) < totalSize
+  fromParts-prop p = Impl.fromParts-prop _ p ∘ tryLookup-lem p
 
-  fromPart-prop : ∀ {k} → k < totalSize →
-    let i , j = fromPart k
+  toParts-prop : ∀ {k} → k < totalSize →
+    let i , j = toParts k
     in Σ (i < numParts) (λ q → j < lookup partsizes (fromℕ≤ q))
-  fromPart-prop = Impl.fromPart-prop _
+  toParts-prop = Impl.toParts-prop _
 
   abstract
-    fromPart-intoPart : ∀ {i j} (p : i < numParts) (q : j < sizeAt (Fin.fromℕ≤ p)) → fromPart (intoPart (i , j)) ≡ (i , j)
-    fromPart-intoPart p = Impl.fromPart-intoPart partsizes _ _ ∘ tryLookup-lem p
+    toParts-fromParts : ∀ {i j} (p : i < numParts) (q : j < sizeAt (Fin.fromℕ≤ p)) → toParts (fromParts (i , j)) ≡ (i , j)
+    toParts-fromParts p = Impl.toParts-fromParts partsizes _ _ ∘ tryLookup-lem p
 
-    intoPart-fromPart : ∀ k (p : k < totalSize) → intoPart (fromPart k) ≡ k
-    intoPart-fromPart = Impl.intoPart-fromPart partsizes
+    fromParts-toParts : ∀ k (p : k < totalSize) → fromParts (toParts k) ≡ k
+    fromParts-toParts = Impl.fromParts-toParts partsizes
