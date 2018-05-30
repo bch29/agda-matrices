@@ -196,7 +196,7 @@ module Into {c ℓ} where
       magmaPart : Struct magmaCode c ℓ
       magmaPart = substruct magma⊂monoid
 
-      module S = Semigroup (semigroup magmaPart ⦃ toSubstruct magma⊂monoid (narrow hasMonoid) ⦄)
+      module S = Semigroup (semigroup magmaPart ⦃ toSubstruct magma⊂monoid (weaken hasMonoid) ⦄)
 
     commutativeMonoid : ⦃ hasCommutativeMonoid : Hasₚ isCommutativeMonoid ⦄ → CommutativeMonoid c ℓ
     commutativeMonoid ⦃ hasCommutativeMonoid ⦄ = record
@@ -210,7 +210,7 @@ module Into {c ℓ} where
       magmaPart : Struct magmaCode c ℓ
       magmaPart = substruct magma⊂monoid
 
-      module S = Semigroup (semigroup magmaPart ⦃ toSubstruct magma⊂monoid (narrow hasCommutativeMonoid) ⦄)
+      module S = Semigroup (semigroup magmaPart ⦃ toSubstruct magma⊂monoid (weaken hasCommutativeMonoid) ⦄)
 
   module _ (struct : Struct bimonoidCode c ℓ) where
     open Struct struct
@@ -235,5 +235,5 @@ module Into {c ℓ} where
       *-monoidPart : Struct monoidCode c ℓ
       *-monoidPart = substruct *-monoid⊂bimonoid
 
-      module +-CM = CommutativeMonoid (commutativeMonoid +-monoidPart ⦃ toSubstruct +-monoid⊂bimonoid (narrow hasSemiring) ⦄)
-      module *-M = Monoid (monoid *-monoidPart ⦃ toSubstruct *-monoid⊂bimonoid (narrow hasSemiring) ⦄)
+      module +-CM = CommutativeMonoid (commutativeMonoid +-monoidPart ⦃ toSubstruct +-monoid⊂bimonoid (weaken hasSemiring) ⦄)
+      module *-M = Monoid (monoid *-monoidPart ⦃ toSubstruct *-monoid⊂bimonoid (weaken hasSemiring) ⦄)

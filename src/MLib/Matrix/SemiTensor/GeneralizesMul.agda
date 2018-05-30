@@ -93,8 +93,8 @@ module _ ⦃ props : Has (1# is rightIdentity for * ∷ []) ⦄ where
             o ∎
           where open ≡.Reasoning
 
-      A′′-lem = ≃-trans (≡-subst-≃₂ lem₁) (≃-trans (⊠-cong (≃-refl {A = A}) (1●-cong-≃ t/sn≡1)) (⊠-identityʳ ⦃ narrow props ⦄ A))
-      B′′-lem = ≃-trans (≡-subst-≃₁ lem₂) (≃-trans (⊠-cong (≃-refl {A = B}) (1●-cong-≃ t/sn′≡1)) (⊠-identityʳ ⦃ narrow props ⦄ B))
+      A′′-lem = ≃-trans (≡-subst-≃₂ lem₁) (≃-trans (⊠-cong (≃-refl {A = A}) (1●-cong-≃ t/sn≡1)) (⊠-identityʳ ⦃ weaken props ⦄ A))
+      B′′-lem = ≃-trans (≡-subst-≃₁ lem₂) (≃-trans (⊠-cong (≃-refl {A = B}) (1●-cong-≃ t/sn′≡1)) (⊠-identityʳ ⦃ weaken props ⦄ B))
 
   generalizes-⊗ {n = zero} = Zero.generalizes-⊗′
   generalizes-⊗ {n = suc n} = Nonzero.generalizes-⊗′

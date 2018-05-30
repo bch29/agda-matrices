@@ -429,8 +429,8 @@ module _ {k} {code : Code k} where
   ⇒ₚ-MP : ∀ {Π Π′ π} → π ∈ₚ Π′ → Π′ ⇒ₚ Π → π ∈ₚ Π
   ⇒ₚ-MP {Π = Π} {Π′} {π} hasπ has⇒ = ⇒ₚ-→ₚ has⇒ π hasπ
 
-  ⇒ₚ-narrow : ∀ {Π Π′ Π′′ : Properties code} (hasΠ′ : Π′ ⇒ₚ Π) ⦃ hasΠ′′ : Π′′ ⇒ₚ Π′ ⦄ → Π′′ ⇒ₚ Π
-  ⇒ₚ-narrow hasΠ′ ⦃ hasΠ′′ ⦄ = ⇒ₚ-trans hasΠ′′ hasΠ′
+  ⇒ₚ-weaken : ∀ {Π Π′ Π′′ : Properties code} (hasΠ′ : Π′ ⇒ₚ Π) ⦃ hasΠ′′ : Π′′ ⇒ₚ Π′ ⦄ → Π′′ ⇒ₚ Π
+  ⇒ₚ-weaken hasΠ′ ⦃ hasΠ′′ ⦄ = ⇒ₚ-trans hasΠ′′ hasΠ′
 
 module _ {k k′} {sub : Code k} {sup : Code k′} (isSub : IsSubcode sub sup) where
   private

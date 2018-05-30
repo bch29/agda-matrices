@@ -124,7 +124,7 @@ sumₜ-zero ⦃ props ⦄ (suc n) =
 ∑-comm :
   ⦃ props : Has (0# is leftIdentity for + ∷ associative on + ∷ commutative on + ∷ []) ⦄ →
   ∀ n m (f : Fin n → Fin m → Carrier) → ∑[ i < n ] ∑[ j < m ] f i j ≈ ∑[ j < m ] ∑[ i < n ] f i j
-∑-comm ⦃ props ⦄ zero m f = sym (sumₜ-zero ⦃ narrow props ⦄ m)
+∑-comm ⦃ props ⦄ zero m f = sym (sumₜ-zero ⦃ weaken props ⦄ m)
 ∑-comm (suc n) m f =
   begin
     ∑[ j < m ] f zero j +′ ∑[ i < n ] ∑[ j < m ] f (suc i) j   ≈⟨ cong + refl (∑-comm n m _) ⟩
@@ -191,11 +191,11 @@ select-sum ⦃ props ⦄ {suc n} {i} t =
       open PC using (transpose)
   in
   begin
-    sumₜ (select 0′ i t)                                                  ≈⟨ sumₜ-permute ⦃ narrow props ⦄ (select 0′ i t) (Perm.transpose zero i) ⟩
+    sumₜ (select 0′ i t)                                                  ≈⟨ sumₜ-permute ⦃ weaken props ⦄ (select 0′ i t) (Perm.transpose zero i) ⟩
     sumₜ (rearrange (transpose zero i) (select 0′ i t))                   ≡⟨ sumₜ-cong≡ (Table.select-const 0′ i t ∘ transpose zero i) ⟩
     sumₜ (rearrange (transpose zero i) (select 0′ i (replicate (f i))))   ≈⟨ sumₜ-cong (select-transpose (replicate (f i)) zero i refl) ⟩
     sumₜ (select 0′ zero (replicate {suc n} (f i)))                       ≡⟨⟩
-    f i +′ sumₜ (replicate {n} 0′)                                        ≈⟨ cong + refl (sumₜ-zero ⦃ narrow props ⦄ n) ⟩
+    f i +′ sumₜ (replicate {n} 0′)                                        ≈⟨ cong + refl (sumₜ-zero ⦃ weaken props ⦄ n) ⟩
     f i +′ 0′                                                             ≈⟨ from props (0# is rightIdentity for +) _ ⟩
     f i                                                                   ∎
 

@@ -57,10 +57,10 @@ open _≃_
 ⊗-assoc ⦃ props ⦄ {m} {n} {p} {q} A B C i l =
   begin
     ((A ⊗ B) ⊗ C) i l                                    ≡⟨⟩
-    ∑[ k < p ] (∑[ j < n ] (A i j *′ B j k) *′ C k l)     ≈⟨ sumₜ-cong {p} (λ k → sumDistribʳ ⦃ narrow props ⦄ {n} _ _) ⟩
+    ∑[ k < p ] (∑[ j < n ] (A i j *′ B j k) *′ C k l)     ≈⟨ sumₜ-cong {p} (λ k → sumDistribʳ ⦃ weaken props ⦄ {n} _ _) ⟩
     ∑[ k < p ] (∑[ j < n ] ((A i j *′ B j k) *′ C k l))   ≈⟨ sumₜ-cong {p} (λ k → sumₜ-cong {n} (λ j → from props (associative on *) _ _ _)) ⟩
-    ∑[ k < p ] (∑[ j < n ] (A i j *′ (B j k *′ C k l)))   ≈⟨ ∑-comm ⦃ narrow props ⦄ p n _ ⟩
-    ∑[ j < n ] (∑[ k < p ] (A i j *′ (B j k *′ C k l)))   ≈⟨ sumₜ-cong {n} (λ j → S.sym (sumDistribˡ ⦃ narrow props ⦄ {p} _ _)) ⟩
+    ∑[ k < p ] (∑[ j < n ] (A i j *′ (B j k *′ C k l)))   ≈⟨ ∑-comm ⦃ weaken props ⦄ p n _ ⟩
+    ∑[ j < n ] (∑[ k < p ] (A i j *′ (B j k *′ C k l)))   ≈⟨ sumₜ-cong {n} (λ j → S.sym (sumDistribˡ ⦃ weaken props ⦄ {p} _ _)) ⟩
     ∑[ j < n ] (A i j *′ ∑[ k < p ] (B j k *′ C k l))     ≡⟨⟩
     (A ⊗ (B ⊗ C)) i l                                    ∎
   where open EqReasoning S.setoid
@@ -109,8 +109,8 @@ open _≃_
   ∀ {m n} → ∀ (A : Matrix S m n) → (1● ⊗ A) ≈ A
 ⊗-identityˡ ⦃ props ⦄ {m} A i k =
   begin
-    ∑[ j < m ] (1● i j *′ A j k)                        ≈⟨ sumₜ-cong (1-selectˡ ⦃ narrow props ⦄ i _) ⟩
-    sumₜ (Table.select 0′ i (tabulate (λ x → A x k)))   ≈⟨ select-sum ⦃ narrow props ⦄ {m} _ ⟩
+    ∑[ j < m ] (1● i j *′ A j k)                        ≈⟨ sumₜ-cong (1-selectˡ ⦃ weaken props ⦄ i _) ⟩
+    sumₜ (Table.select 0′ i (tabulate (λ x → A x k)))   ≈⟨ select-sum ⦃ weaken props ⦄ {m} _ ⟩
     A i k                                               ∎
   where open EqReasoning S.setoid
 
@@ -125,8 +125,8 @@ open _≃_
   ∀ {m n} → ∀ (A : Matrix S m n) → (A ⊗ 1●) ≈ A
 ⊗-identityʳ ⦃ props ⦄ {n = n} A i k =
   begin
-    ∑[ j < n ] (A i j *′ 1● j k)                ≈⟨ sumₜ-cong (1-selectʳ ⦃ narrow props ⦄ k _) ⟩
-    sumₜ (Table.select 0′ k (tabulate (A i)))   ≈⟨ select-sum ⦃ narrow props ⦄ {n} _ ⟩
+    ∑[ j < n ] (A i j *′ 1● j k)                ≈⟨ sumₜ-cong (1-selectʳ ⦃ weaken props ⦄ k _) ⟩
+    sumₜ (Table.select 0′ k (tabulate (A i)))   ≈⟨ select-sum ⦃ weaken props ⦄ {n} _ ⟩
     A i k                                       ∎
   where open EqReasoning S.setoid
 
@@ -137,6 +137,6 @@ open _≃_
 ⊗-distributesOverˡ-⊕ ⦃ props ⦄ {n = n} M A B i k =
   begin
     ∑[ j < n ] (M i j *′ (A j k +′ B j k))                      ≈⟨ sumₜ-cong (λ j → from props (* ⟨ distributesOverˡ ⟩ₚ +) (M i j) (A j k) (B j k)) ⟩
-    ∑[ j < n ] (M i j *′ A j k +′ M i j *′ B j k)               ≈⟨ S.sym (∑-+′-hom ⦃ narrow props ⦄ n (λ j → M i j *′ A j k) (λ j → M i j *′ B j k)) ⟩
+    ∑[ j < n ] (M i j *′ A j k +′ M i j *′ B j k)               ≈⟨ S.sym (∑-+′-hom ⦃ weaken props ⦄ n (λ j → M i j *′ A j k) (λ j → M i j *′ B j k)) ⟩
     ∑[ j < n ] (M i j *′ A j k) +′ ∑[ j < n ] (M i j *′ B j k)  ∎
   where open EqReasoning S.setoid

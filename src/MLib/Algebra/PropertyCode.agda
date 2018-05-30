@@ -6,7 +6,7 @@ open import MLib.Finite
 open import MLib.Algebra.PropertyCode.RawStruct public
 open import MLib.Algebra.PropertyCode.Core as Core public
   using (Property; Properties; Code; IsSubcode; _∈ₚ_; _⇒ₚ_; ⟦_⟧P)
-  renaming (⇒ₚ-narrow to narrow)
+  renaming (⇒ₚ-weaken to weaken)
 
 open Core.PropKind public
 open Core.PropertyC using (_on_; _is_for_; _⟨_⟩ₚ_) public
